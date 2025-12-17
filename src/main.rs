@@ -1,11 +1,14 @@
-use anyhow::{bail, Result};
+use anyhow::{bail, ensure, Context, Result};
 use clap::Parser;
 use log::{debug, error, info};
+use std::collections::HashSet;
+use std::path::PathBuf;
 use std::{fs, path::Path, process::ExitCode, time::Instant};
 
 use crate::cli::{Cli, LanguageCode};
 use crate::config::initialize_configs;
 use crate::localizer::Localizer;
+use crate::pack::Pack;
 use crate::scraper::OpTcgScraper;
 use crate::storage::DataStore;
 
@@ -53,7 +56,51 @@ fn process_args(args: Cli) -> Result<()> {
             output_dir,
         } => download_images(args.language, &pack_id.to_string_lossy(), &output_dir),
         cli::Commands::TestConfig => Localizer::find_locales(),
+        cli::Commands::Diff { pack_files } => show_diffs(pack_files),
     }
+}
+
+fn show_diffs(pack_files: Option<Vec<PathBuf>>) -> Result<()> {
+    if let Some(pack_files) = pack_files {
+        ensure!(pack_files.len() == 2, "exactly two packs must be provided");
+
+        let old_packs_path = pack_files.first().context("there should be a first")?;
+        let new_packs_path = pack_files.last().context("there should be a last")?;
+
+        ensure!(Path::exists(old_packs_path), "old_packs file not found");
+        ensure!(Path::exists(new_packs_path), "new_packs file not found");
+
+        let old_packs = fs::read_to_string(old_packs_path)?;
+        let old_packs: Vec<Pack> = serde_json::from_str(&old_packs)?;
+        let old_packs: HashSet<_> = old_packs.iter().collect();
+        debug!(
+            "successfully loaded {} packs from: `{}`",
+            old_packs.len(),
+            old_packs_path.display()
+        );
+
+        let new_packs = fs::read_to_string(new_packs_path)?;
+        let new_packs: Vec<Pack> = serde_json::from_str(&new_packs)?;
+        let new_packs: HashSet<_> = new_packs.iter().collect();
+        debug!(
+            "successfully loaded {} packs from: `{}`",
+            new_packs.len(),
+            new_packs_path.display()
+        );
+
+        let diff_packs: Vec<_> = old_packs.symmetric_difference(&new_packs).collect();
+        debug!(
+            "found {} diff(s) between both sets: {:#?}",
+            diff_packs.len(),
+            diff_packs
+        );
+
+        let diff_json = serde_json::to_string(&diff_packs)?;
+        println!("{}", diff_json);
+        return Ok(());
+    }
+
+    bail!("missing arguments")
 }
 
 fn download_images(language: LanguageCode, pack_id: &str, output_dir: &Path) -> Result<()> {
@@ -122,17 +169,18 @@ fn list_packs(language: LanguageCode, output_file: Option<&Path>) -> Result<()> 
     info!("fetching all pack ids...");
     let start = Instant::now();
 
-    let packs = scraper.fetch_all_packs()?;
-    info!("successfully fetched {} packs!", packs.len());
+    let all_packs = scraper.fetch_all_packs()?;
+    info!("successfully fetched {} packs!", all_packs.len());
 
-    let json = serde_json::to_string(&packs)?;
+    let out_json = serde_json::to_string(&all_packs)?;
+
     if let Some(path) = output_file {
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent)?;
         }
-        fs::write(path, json)?;
+        fs::write(path, out_json)?;
     } else {
-        println!("{}", json);
+        println!("{}", out_json);
     }
 
     let duration = start.elapsed();

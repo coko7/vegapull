@@ -29,13 +29,19 @@ pub struct Cli {
 #[derive(Debug, Subcommand)]
 pub enum Commands {
     /// Get the list of all existing packs
-    #[command(alias = "pack", alias = "pak")]
+    #[command(name = "pack", alias = "pak")]
     Packs {
         #[arg(short, long = "out")]
         output_file: Option<PathBuf>,
     },
+    /// Compare datasets
+    #[command(name = "diff", alias = "df")]
+    Diff {
+        #[arg(short, long = "packs", num_args = 2, value_names = ["EXISTING", "NEW"])]
+        pack_files: Option<Vec<PathBuf>>,
+    },
     /// Get all cards within the given pack
-    #[command(alias = "card", alias = "car")]
+    #[command(name = "card", alias = "car")]
     Cards {
         /// ID of the pack
         pack_id: OsString,
@@ -44,7 +50,7 @@ pub enum Commands {
         output_file: Option<PathBuf>,
     },
     /// Download all card images for a given pack
-    #[command(alias = "image", alias = "img")]
+    #[command(name = "image", alias = "img")]
     Images {
         /// ID of the pack
         pack_id: OsString,

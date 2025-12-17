@@ -2,13 +2,30 @@ use anyhow::Result;
 use regex::Regex;
 use scraper::ElementRef;
 use serde::{Deserialize, Serialize};
-use std::fmt;
+use std::{
+    fmt,
+    hash::{Hash, Hasher},
+};
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Pack {
     pub id: String,
     pub raw_title: String,
     pub title_parts: TitleParts,
+}
+
+impl Eq for Pack {}
+
+impl PartialEq for Pack {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+    }
+}
+
+impl Hash for Pack {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.id.hash(state);
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize)]
