@@ -6,7 +6,7 @@ A CLI utility to retrieve data for the One Piece Trading Cards Game (TCG).
 
 The CLI directly goes against the [onepiece-cardgame.com](https://onepiece-cardgame.com) website and attempts to scrap information such as packs, cards and images.
 
-Since [v0.5.0](https://crates.io/crates/vegapull/0.4.0), vegapull now supports multi-threaded image downloads natively for a ***Blazingly faaaast experience 🚀***
+Since [v0.5.0](https://crates.io/crates/vegapull/0.5.0), vegapull now supports multi-threaded image downloads natively for a ***Blazingly faaaast experience 🚀***
 
 ![demo](https://github.com/user-attachments/assets/6ac89611-08b5-4caa-ba83-a696929a2e37)
 

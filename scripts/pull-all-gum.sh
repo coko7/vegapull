@@ -30,7 +30,7 @@ fi
 mkdir "$data_dir"
 echo -e "📁 Created directory: $data_dir\n"
 
-if ! gum spin --title="VegaPull packs..." -- "$VEGA_BIN" --language "$language" packs > "$data_dir/packs.json"; then
+if ! gum spin --title="VegaPull packs..." -- "$VEGA_BIN" --language "$language" pack > "$data_dir/packs.json"; then
     echo "Failed to pull list of packs using vegapull. Aborted" >&2
     exit 1
 fi
@@ -49,7 +49,7 @@ function pull_cards() {
         message="[$index/$pack_count] VagaPulling cards for: $pack_title ($pack_id)..."
 
         if ! gum spin --title="$message" -- \
-            "$VEGA_BIN" --language "$language" cards "$pack_id" > "$data_dir/cards_$pack_id.json"; then
+            "$VEGA_BIN" --language "$language" card "$pack_id" > "$data_dir/cards_$pack_id.json"; then
             echo "Failed to pull cards using vegapull. Aborted" >&2
             return 1
         else
@@ -76,7 +76,7 @@ function download_images() {
         pack_title=$(echo "$packs" | jq --arg pack_id "$pack_id" -r '.[] | select(.id == $pack_id) | .title_parts.title')
         echo "[$index/$pack_count] VagaPulling images for: $pack_title ($pack_id)..."
 
-        if ! "$VEGA_BIN" --language "$language" images --output-dir="$output_dir" "$pack_id" -vv; then
+        if ! "$VEGA_BIN" --language "$language" image --output-dir="$output_dir" "$pack_id" -vv; then
             echo "Failed to pull images using vegapull. Aborted" >&2
             return 1
         else
