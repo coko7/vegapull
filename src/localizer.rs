@@ -13,7 +13,7 @@ pub const ZH_TW_LOCALE_RAW: &str = include_str!("../config/zh_tw.toml");
 pub const TH_LOCALE_RAW: &str = include_str!("../config/th.toml");
 pub const FR_LOCALE_RAW: &str = include_str!("../config/fr.toml");
 
-#[derive(Debug, Deserialize, Serialize, Default)]
+#[derive(Debug, Deserialize, Serialize, Default, Clone)]
 pub struct Aliases {
     #[serde(default)]
     pub colors: HashMap<String, Vec<String>>,
@@ -25,7 +25,7 @@ pub struct Aliases {
     pub rarities: HashMap<String, Vec<String>>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Localizer {
     pub hostname: String,
 

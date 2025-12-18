@@ -1,6 +1,6 @@
 [package]
 name = "vegapull"
-version = "0.4.0"
+version = "0.5.0"
 description = "Command line tool for scraping data for the One Piece Trading Card Game"
 repository = "https://github.com/Coko7/vegapull"
 authors = ["Coko <91132775+Coko7@users.noreply.github.com>"]

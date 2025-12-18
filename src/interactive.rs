@@ -84,7 +84,7 @@ pub fn show_interactive() -> Result<()> {
     let download_images = is_yes(value);
 
     let localizer = Localizer::load(language)?;
-    let scraper = OpTcgScraper::new(&localizer);
+    let scraper = OpTcgScraper::new(localizer);
     let store = DataStore::new(&data_dir, language);
 
     println!("\nFetching packs...");

@@ -25,11 +25,25 @@ type Pack struct {
 const (
 	language  = "english"
 	vegaData  = "data/english"
-	vegaBin   = "vegapull"
+	vegaBin   = "/home/coco/.config/cargo/bin/vegapull"
 	packsFile = "packs.json"
 )
 
 func main() {
+	fmt.Println("Since v0.5.0, vegapull now has native supports for multi-threaded downloads of images.")
+	fmt.Println("Before then, the `vegapull images` subcommand was quite slow as it handled the downloads in sequence.")
+	fmt.Println("This Go script was originally made by @tokiwong to fix this issue.")
+	fmt.Println("It should still work but I haven't had time to test and troubleshoot it.")
+	fmt.Println("Are you sure you want to continue?")
+
+	scanner := bufio.NewScanner(os.Stdin)
+	scanner.Scan()
+	input := strings.TrimSpace(scanner.Text())
+
+	if strings.ToLower(input) != "yes" && strings.ToLower(input) != "y" {
+		os.Exit(1)
+	}
+
 	reader := bufio.NewReader(os.Stdin)
 
 	_, err := os.Stat(vegaBin)

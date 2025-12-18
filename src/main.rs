@@ -2,9 +2,14 @@ use anyhow::{bail, ensure, Context, Result};
 use clap::Parser;
 use log::{debug, error, info};
 use std::collections::HashSet;
+use std::io::{self, IsTerminal};
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
+use std::thread;
 use std::{fs, path::Path, process::ExitCode, time::Instant};
 
+use crate::card::Card;
 use crate::cli::{Cli, LanguageCode};
 use crate::config::initialize_configs;
 use crate::localizer::Localizer;
@@ -105,7 +110,7 @@ fn show_diffs(pack_files: Option<Vec<PathBuf>>) -> Result<()> {
 
 fn download_images(language: LanguageCode, pack_id: &str, output_dir: &Path) -> Result<()> {
     let localizer = Localizer::load(language)?;
-    let scraper = OpTcgScraper::new(&localizer);
+    let scraper = OpTcgScraper::new(localizer);
 
     if output_dir.exists() {
         error!("output directory already `{}` exists", output_dir.display());
@@ -123,10 +128,22 @@ fn download_images(language: LanguageCode, pack_id: &str, output_dir: &Path) -> 
     info!("fetching all cards for pack `{}`...", pack_id);
     let start = Instant::now();
 
+    if io::stdout().is_terminal() {
+        println!("fetching all cards for pack `{}`...", pack_id);
+    }
+
     let cards = scraper.fetch_all_cards(pack_id)?;
     if cards.is_empty() {
         error!("no cards available for pack `{}`", pack_id);
         bail!("no cards found for pack `{}`", pack_id);
+    }
+
+    if io::stdout().is_terminal() {
+        println!(
+            "successfully fetched {} cards for pack: `{}`!",
+            cards.len(),
+            pack_id
+        );
     }
 
     info!(
@@ -141,20 +158,45 @@ fn download_images(language: LanguageCode, pack_id: &str, output_dir: &Path) -> 
     info!("downloading images for pack `{}`...", pack_id);
     let start = Instant::now();
 
-    for (idx, card) in cards.iter().enumerate() {
-        let img_filename = DataStore::get_img_filename(card)?;
-        let img_path = output_dir.join(img_filename);
+    let mut handles = vec![];
 
-        let img_data = scraper.download_card_image(card)?;
-        DataStore::write_image_to_file(img_data, &img_path)?;
+    let completed_count = Arc::new(AtomicUsize::new(0));
+    let all_cards = cards.len();
 
-        debug!(
-            "[{}/{}] saved image `{}` to `{}`",
-            idx + 1,
-            cards.len(),
-            card.img_url,
-            img_path.display()
-        );
+    let scraper = Arc::new(scraper);
+    let output_dir = output_dir.to_path_buf();
+
+    for card in cards.into_iter() {
+        let scraper = Arc::clone(&scraper);
+        let output_dir = output_dir.clone();
+        let completed_count = Arc::clone(&completed_count);
+
+        let handle = thread::spawn(move || {
+            let img_url = card.img_url.clone();
+            let img_path = download_card_image(&output_dir, &scraper, card).unwrap();
+            let current = completed_count.fetch_add(1, Ordering::SeqCst) + 1;
+
+            eprintln!(
+                "[{}/{}] succesfully saved image `{}` to `{}`",
+                current,
+                all_cards,
+                img_url,
+                img_path.display()
+            );
+
+            debug!(
+                "[{}/{}] saved image `{}` to `{}`",
+                current,
+                all_cards,
+                img_url,
+                img_path.display()
+            );
+        });
+        handles.push(handle);
+    }
+
+    for handle in handles {
+        handle.join().unwrap();
     }
 
     let duration = start.elapsed();
@@ -162,9 +204,22 @@ fn download_images(language: LanguageCode, pack_id: &str, output_dir: &Path) -> 
     Ok(())
 }
 
+fn download_card_image(
+    output_dir: &Path,
+    scraper: &Arc<OpTcgScraper>,
+    card: Card,
+) -> Result<PathBuf> {
+    let img_filename = DataStore::get_img_filename(&card)?;
+    let img_path = output_dir.join(img_filename);
+    let img_data = scraper.download_card_image(&card)?;
+
+    DataStore::write_image_to_file(img_data, &img_path)?;
+    Ok(img_path)
+}
+
 fn list_packs(language: LanguageCode, output_file: Option<&Path>) -> Result<()> {
     let localizer = Localizer::load(language)?;
-    let scraper = OpTcgScraper::new(&localizer);
+    let scraper = OpTcgScraper::new(localizer);
 
     info!("fetching all pack ids...");
     let start = Instant::now();
@@ -191,7 +246,7 @@ fn list_packs(language: LanguageCode, output_file: Option<&Path>) -> Result<()> 
 
 fn list_cards(language: LanguageCode, pack_id: &str, output_file: Option<&Path>) -> Result<()> {
     let localizer = Localizer::load(language)?;
-    let scraper = OpTcgScraper::new(&localizer);
+    let scraper = OpTcgScraper::new(localizer);
 
     info!("fetching all cards...");
     let start = Instant::now();

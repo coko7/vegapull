@@ -1,7 +1,6 @@
 use anyhow::{bail, Context, Result};
 use log::{debug, info};
-use reqwest::blocking::{Client, Response};
-use std::collections::HashMap;
+use std::{collections::HashMap, thread, time::Duration};
 
 use crate::{
     card::{Card, CardScraper},
@@ -9,16 +8,24 @@ use crate::{
     pack::Pack,
 };
 
-pub struct OpTcgScraper<'a> {
+pub struct OpTcgScraper {
     base_url: String,
-    localizer: &'a Localizer,
+    localizer: Localizer,
+    client: reqwest::blocking::Client,
 }
 
-impl<'a> OpTcgScraper<'a> {
-    pub fn new(localizer: &Localizer) -> OpTcgScraper<'_> {
+static APP_USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
+
+impl OpTcgScraper {
+    pub fn new(localizer: Localizer) -> OpTcgScraper {
         OpTcgScraper {
             base_url: localizer.hostname.clone(),
             localizer,
+            client: reqwest::blocking::ClientBuilder::new()
+                .user_agent(APP_USER_AGENT)
+                .timeout(Duration::from_secs(30))
+                .build()
+                .unwrap(),
         }
     }
 
@@ -38,7 +45,7 @@ impl<'a> OpTcgScraper<'a> {
         let url = self.cardlist_endpoint();
         info!("GET `{}`", url);
 
-        let response = reqwest::blocking::get(url)?.text()?;
+        let response = self.client.get(url).send()?.text()?;
 
         info!("parsing HTML document");
         let document = scraper::Html::parse_document(&response);
@@ -71,8 +78,8 @@ impl<'a> OpTcgScraper<'a> {
         let mut params = HashMap::new();
         params.insert("series", pack_id);
 
-        let client = Client::new();
-        let response = client
+        let response = self
+            .client
             .get(self.cardlist_endpoint())
             .query(&params)
             .send()?
@@ -95,7 +102,7 @@ impl<'a> OpTcgScraper<'a> {
 
             let card_id = &card_id[1..];
 
-            match CardScraper::create_card(self.localizer, &document, card_id, pack_id) {
+            match CardScraper::create_card(&self.localizer, &document, card_id, pack_id) {
                 Ok(mut card) => {
                     debug!("computing img_full_url for card: {}", card);
                     card.img_full_url = Some(self.get_img_full_url(&card.img_url));
@@ -111,11 +118,33 @@ impl<'a> OpTcgScraper<'a> {
         Ok(cards)
     }
 
-    pub fn download_card_image(&self, card: &Card) -> Result<Response> {
+    pub fn download_card_image(&self, card: &Card) -> Result<Vec<u8>> {
         let full_url = self.get_img_full_url(&card.img_url);
 
         debug!("downloading image `{}`...", full_url);
-        let response = reqwest::blocking::get(full_url)?;
-        Ok(response)
+
+        let mut retries = 3;
+        loop {
+            match self.client.get(full_url.as_str()).send() {
+                Ok(response) => {
+                    let status = response.status();
+                    if !status.is_success() {
+                        bail!("HTTP {}: {}", status, full_url);
+                    }
+
+                    let img_data = response.bytes()?.to_vec();
+
+                    debug!("downloaded {} bytes from {}", img_data.len(), full_url);
+                    return Ok(img_data);
+                }
+                Err(e) => {
+                    retries -= 1;
+                    if retries == 0 {
+                        bail!("failed after 3 retries: {}", e);
+                    }
+                    thread::sleep(Duration::from_millis(100));
+                }
+            }
+        }
     }
 }

@@ -31,13 +31,15 @@ pub enum Commands {
     /// Get the list of all existing packs
     #[command(name = "pack", alias = "pak")]
     Packs {
+        /// Save output directly to <OUTPUT_FILE>
         #[arg(short, long = "out")]
         output_file: Option<PathBuf>,
     },
     /// Compare datasets
     #[command(name = "diff", alias = "df")]
     Diff {
-        #[arg(short, long = "packs", num_args = 2, value_names = ["EXISTING", "NEW"])]
+        /// Output differences between two packs.json files
+        #[arg(short, long = "packs", num_args = 2, value_names = ["FILE1", "FILE2"])]
         pack_files: Option<Vec<PathBuf>>,
     },
     /// Get all cards within the given pack
@@ -46,6 +48,7 @@ pub enum Commands {
         /// ID of the pack
         pack_id: OsString,
 
+        /// Save output directly to <OUTPUT_FILE>
         #[arg(short, long = "out")]
         output_file: Option<PathBuf>,
     },
@@ -54,6 +57,7 @@ pub enum Commands {
     Images {
         /// ID of the pack
         pack_id: OsString,
+
         /// Directory where the images should be saved
         #[arg(short, long = "output-dir")]
         output_dir: PathBuf,

@@ -1,8 +1,8 @@
 use anyhow::{bail, Context, Result};
 use log::{debug, info, trace};
-use reqwest::blocking::Response;
 use std::{
     fs,
+    io::Write,
     path::{Path, PathBuf},
 };
 
@@ -125,18 +125,19 @@ impl DataStore {
         Ok(())
     }
 
-    pub fn write_image_to_file(mut img_data: Response, path: &PathBuf) -> Result<()> {
+    pub fn write_image_to_file(img_data: Vec<u8>, path: &PathBuf) -> Result<()> {
         debug!("about to save image to file: `{}`", path.display());
 
         let mut file = std::fs::File::create(path)?;
+        file.write_all(&img_data)?;
+        file.sync_all()?; // Ensure written to disk
 
-        img_data.copy_to(&mut file)?;
-        debug!("saved image to file");
+        debug!("saved {} bytes to {}", img_data.len(), path.display());
 
         Ok(())
     }
 
-    pub fn write_image(&self, card: &Card, img_data: Response) -> Result<()> {
+    pub fn write_image(&self, card: &Card, img_data: Vec<u8>) -> Result<()> {
         self.ensure_created(StoreLocation::ImagesDir)?;
 
         let path = self.get_path(StoreLocation::ImageFile(card))?;

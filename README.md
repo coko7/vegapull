@@ -6,6 +6,8 @@ A CLI utility to retrieve data for the One Piece Trading Cards Game (TCG).
 
 The CLI directly goes against the [onepiece-cardgame.com](https://onepiece-cardgame.com) website and attempts to scrap information such as packs, cards and images.
 
+Since [v0.5.0](https://crates.io/crates/vegapull/0.4.0), vegapull now supports multi-threaded image downloads natively for a ***Blazingly faaaast experience 🚀***
+
 ![demo](https://github.com/user-attachments/assets/6ac89611-08b5-4caa-ba83-a696929a2e37)
 
 ## Where can I find prefetched datasets?
@@ -37,16 +39,17 @@ Dynamically fetch data for the One Piece TCG from official sites.
 Usage: vegapull [OPTIONS] <COMMAND>
 
 Commands:
-  packs        Get the list of all existing packs
-  cards        Get all cards within the given pack
-  images       Download all card images for a given pack
+  pack         Get the list of all existing packs
+  diff         Compare datasets
+  card         Get all cards within the given pack
+  image        Download all card images for a given pack
   inter        Launch into interactive mode
   test-config  Test what configuration files are found
   help         Print this message or the help of the given subcommand(s)
 
 Options:
   -l, --language <LANGUAGE>
-          Language to use for the data [default: english] [possible values: chinese-hongkong, chinese-simplified, chinese-taiwan, english, english-asia, japanese, thai]
+          Language to use for the data [default: english] [possible values: chinese-hongkong, chinese-simplified, chinese-taiwan, english, english-asia, japanese, thai, french]
   -c, --config-dir <CONFIG_DIRECTORY_PATH>
           Specify path to the config directory (where locales are stored)
   -v, --verbose...
