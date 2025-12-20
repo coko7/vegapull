@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::localizer::Localizer;
 
-#[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone)]
 pub enum CardColor {
     Red,
     Green,

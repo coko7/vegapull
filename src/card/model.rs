@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{CardAttribute, CardCategory, CardColor, CardRarity};
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Card {
     pub id: String,
     pub pack_id: String,

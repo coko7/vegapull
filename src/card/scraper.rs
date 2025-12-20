@@ -1,5 +1,5 @@
 use anyhow::{bail, Context, Result};
-use log::{debug, trace};
+use log::trace;
 use regex::Regex;
 use scraper::{ElementRef, Html};
 use unicode_normalization::UnicodeNormalization;
@@ -61,7 +61,7 @@ impl CardScraper {
             trigger,
         };
 
-        debug!("processed card: `{}`", card);
+        trace!("processed card: `{}`", card);
         Ok(card)
     }
 

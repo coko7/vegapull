@@ -1,8 +1,9 @@
 use anyhow::{bail, ensure, Context, Result};
+use chrono::Local;
 use clap::Parser;
 use log::{debug, error, info};
 use std::collections::HashSet;
-use std::io::{self, IsTerminal};
+use std::env::current_dir;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
@@ -10,7 +11,7 @@ use std::thread;
 use std::{fs, path::Path, process::ExitCode, time::Instant};
 
 use crate::card::Card;
-use crate::cli::{Cli, LanguageCode};
+use crate::cli::{CardDownloadMode, Cli, LanguageCode};
 use crate::config::initialize_configs;
 use crate::localizer::Localizer;
 use crate::pack::Pack;
@@ -49,17 +50,19 @@ fn process_args(args: Cli) -> Result<()> {
         cli::Commands::Packs { output_file } => list_packs(args.language, output_file.as_deref()),
         cli::Commands::Cards {
             pack_id,
-            output_file,
+            output_path: output_file,
+            mode,
         } => list_cards(
             args.language,
             &pack_id.to_string_lossy(),
             output_file.as_deref(),
+            mode,
         ),
         cli::Commands::Interactive => interactive::show_interactive(),
-        cli::Commands::Images {
-            pack_id,
-            output_dir,
-        } => download_images(args.language, &pack_id.to_string_lossy(), &output_dir),
+        // cli::Commands::Images {
+        //     pack_id,
+        //     output_dir,
+        // } => download_images(args.language, &pack_id.to_string_lossy(), &output_dir),
         cli::Commands::TestConfig => Localizer::find_locales(),
         cli::Commands::Diff { pack_files } => show_diffs(pack_files),
     }
@@ -108,7 +111,11 @@ fn show_diffs(pack_files: Option<Vec<PathBuf>>) -> Result<()> {
     bail!("missing arguments")
 }
 
-fn download_images(language: LanguageCode, pack_id: &str, output_dir: &Path) -> Result<()> {
+pub fn download_images_fast(
+    language: LanguageCode,
+    cards: Vec<Card>,
+    output_dir: &Path,
+) -> Result<()> {
     let localizer = Localizer::load(language)?;
     let scraper = OpTcgScraper::new(localizer);
 
@@ -125,37 +132,7 @@ fn download_images(language: LanguageCode, pack_id: &str, output_dir: &Path) -> 
         Err(e) => bail!("failed to create `{}`: {}", output_dir.display(), e),
     }
 
-    info!("fetching all cards for pack `{}`...", pack_id);
-    let start = Instant::now();
-
-    if io::stdout().is_terminal() {
-        println!("fetching all cards for pack `{}`...", pack_id);
-    }
-
-    let cards = scraper.fetch_all_cards(pack_id)?;
-    if cards.is_empty() {
-        error!("no cards available for pack `{}`", pack_id);
-        bail!("no cards found for pack `{}`", pack_id);
-    }
-
-    if io::stdout().is_terminal() {
-        println!(
-            "successfully fetched {} cards for pack: `{}`!",
-            cards.len(),
-            pack_id
-        );
-    }
-
-    info!(
-        "successfully fetched {} cards for pack: `{}`!",
-        cards.len(),
-        pack_id
-    );
-
-    let duration = start.elapsed();
-    info!("fetching cards took: {:?}", duration);
-
-    info!("downloading images for pack `{}`...", pack_id);
+    info!("downloading images...");
     let start = Instant::now();
 
     let mut handles = vec![];
@@ -224,7 +201,7 @@ fn list_packs(language: LanguageCode, output_file: Option<&Path>) -> Result<()> 
     info!("fetching all pack ids...");
     let start = Instant::now();
 
-    let all_packs = scraper.fetch_all_packs()?;
+    let all_packs = scraper.fetch_packs()?;
     info!("successfully fetched {} packs!", all_packs.len());
 
     let out_json = serde_json::to_string(&all_packs)?;
@@ -244,37 +221,92 @@ fn list_packs(language: LanguageCode, output_file: Option<&Path>) -> Result<()> 
     Ok(())
 }
 
-fn list_cards(language: LanguageCode, pack_id: &str, output_file: Option<&Path>) -> Result<()> {
+fn list_cards(
+    language: LanguageCode,
+    pack_id: &str,
+    output_path: Option<&Path>,
+    mode: CardDownloadMode,
+) -> Result<()> {
     let localizer = Localizer::load(language)?;
     let scraper = OpTcgScraper::new(localizer);
 
-    info!("fetching all cards...");
+    eprintln!("fetching all cards for pack {pack_id}...");
     let start = Instant::now();
 
-    let cards = scraper.fetch_all_cards(pack_id)?;
+    let cards = scraper.fetch_cards(pack_id)?;
     if cards.is_empty() {
-        error!("No cards available for pack `{}`", pack_id);
+        error!("No cards available for pack {}", pack_id);
         bail!("No cards found");
     }
 
-    info!(
-        "successfully fetched {} cards for pack: `{}`!",
-        cards.len(),
-        pack_id
-    );
+    eprintln!("successfully fetched {} cards!", cards.len());
 
     let json = serde_json::to_string(&cards)?;
-    if let Some(path) = output_file {
-        if let Some(parent) = path.parent() {
-            fs::create_dir_all(parent)?;
+
+    match mode {
+        CardDownloadMode::ImageOnly => save_images_to_fs(language, cards, output_path)?,
+        CardDownloadMode::DataOnly => {
+            let default_filename = format!("cards_{pack_id}.json");
+            let default_file_path = current_dir()?.join(default_filename);
+            let out_json_path = output_path.unwrap_or(&default_file_path);
+
+            if let Some(parent) = default_file_path.parent() {
+                fs::create_dir_all(parent)?;
+            }
+
+            fs::write(out_json_path, &json)?;
         }
-        fs::write(path, json)?;
-    } else {
-        println!("{}", json);
-    }
+        CardDownloadMode::All => {
+            let default_data_path = get_default_data_dir()?;
+            let output_dir = output_path.unwrap_or(&default_data_path);
+
+            if let Some(parent) = output_dir.parent() {
+                fs::create_dir_all(parent)?;
+            }
+
+            let default_filename = format!("cards_{pack_id}.json");
+            let out_json_path = output_dir.join(default_filename);
+            fs::write(&out_json_path, &json)?;
+
+            save_images_to_fs(language, cards, output_path)?;
+        }
+    };
+
+    // if mode == CardDownloadMode::DataOnly || mode == CardDownloadMode::All {
+    //     if let Some(path) = output_path {
+    //         if let Some(parent) = path.parent() {
+    //             fs::create_dir_all(parent)?;
+    //         }
+    //         fs::write(path, json)?;
+    //     } else {
+    //         println!("{}", json);
+    //     }
+    // }
 
     let duration = start.elapsed();
 
     info!("list_cards took: {:?}", duration);
     Ok(())
+}
+
+fn save_images_to_fs(
+    language: LanguageCode,
+    cards: Vec<Card>,
+    output_dir: Option<&Path>,
+) -> Result<()> {
+    let default_data_path = get_default_data_dir()?;
+    let output_dir = output_dir.unwrap_or(&default_data_path).join("images");
+
+    eprintln!("downloading images to: {}", output_dir.display());
+    download_images_fast(language, cards, &output_dir)
+}
+
+fn get_default_data_dirname() -> String {
+    let timestamp = Local::now().format("%y%m%d_%H%M%S").to_string();
+    format!("data-{}", timestamp)
+}
+
+fn get_default_data_dir() -> Result<PathBuf> {
+    let dir_name = get_default_data_dirname();
+    Ok(current_dir()?.join(dir_name))
 }

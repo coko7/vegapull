@@ -1,7 +1,13 @@
-use std::{ffi::OsString, path::PathBuf, str::FromStr};
+use std::{
+    ffi::OsString,
+    fmt::{self},
+    path::PathBuf,
+    str::FromStr,
+};
 
 use anyhow::Result;
 use clap::{command, Parser, Subcommand, ValueEnum};
+use inquire_derive::Selectable;
 
 #[derive(Debug, Parser)]
 #[command(name = "vegapull")]
@@ -26,6 +32,16 @@ pub struct Cli {
     pub verbose: clap_verbosity_flag::Verbosity,
 }
 
+#[derive(Copy, Clone, Debug, ValueEnum, PartialEq, Eq)]
+pub(crate) enum CardDownloadMode {
+    #[value(name = "image", alias = "img", alias = "i")]
+    ImageOnly = 1,
+    #[value(name = "data", alias = "d")]
+    DataOnly = 2,
+    #[value(name = "all", alias = "a")]
+    All = 3,
+}
+
 #[derive(Debug, Subcommand)]
 pub enum Commands {
     /// Get the list of all existing packs
@@ -43,24 +59,17 @@ pub enum Commands {
         pack_files: Option<Vec<PathBuf>>,
     },
     /// Get all cards within the given pack
-    #[command(name = "card", alias = "car")]
+    #[command(name = "cards", alias = "card")]
     Cards {
         /// ID of the pack
         pack_id: OsString,
 
-        /// Save output directly to <OUTPUT_FILE>
-        #[arg(short, long = "out")]
-        output_file: Option<PathBuf>,
-    },
-    /// Download all card images for a given pack
-    #[command(name = "image", alias = "img")]
-    Images {
-        /// ID of the pack
-        pack_id: OsString,
+        /// Save downloaded data to <OUTPUT_PATH> instead of stdin
+        #[arg(short, long = "output-path")]
+        output_path: Option<PathBuf>,
 
-        /// Directory where the images should be saved
-        #[arg(short, long = "output-dir")]
-        output_dir: PathBuf,
+        #[arg(short, long, value_enum, default_value_t = CardDownloadMode::DataOnly)]
+        mode: CardDownloadMode,
     },
     /// Launch into interactive mode
     #[command(name = "inter", alias = "interactive", alias = "int")]
@@ -70,39 +79,44 @@ pub enum Commands {
     TestConfig,
 }
 
-#[derive(ValueEnum, Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(ValueEnum, Copy, Clone, Debug, PartialEq, Eq, Selectable)]
 pub enum LanguageCode {
+    #[value(name = "english", alias = "en")]
+    English,
+    #[value(name = "japanese", alias = "jp")]
+    Japanese,
+    #[value(name = "french", alias = "fr")]
+    French,
     #[value(name = "chinese-hongkong", alias = "zh_hk", alias = "zh_HK")]
     ChineseHongKong,
     #[value(name = "chinese-simplified", alias = "zh_cn", alias = "zh_CN")]
     ChineseSimplified,
     #[value(name = "chinese-taiwan", alias = "zh_tw", alias = "zh_TW")]
     ChineseTaiwan,
-    #[value(name = "english", alias = "en")]
-    English,
     #[value(name = "english-asia", alias = "en-asia")]
     EnglishAsia,
-    #[value(name = "japanese", alias = "jp")]
-    Japanese,
     #[value(name = "thai", alias = "th")]
     Thai,
-    #[value(name = "french", alias = "fr")]
-    French,
+}
+
+impl fmt::Display for LanguageCode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            LanguageCode::ChineseHongKong => write!(f, "chinese-hong-kong"),
+            LanguageCode::ChineseSimplified => write!(f, "chinese-simplified"),
+            LanguageCode::ChineseTaiwan => write!(f, "chinese-taiwan"),
+            LanguageCode::English => write!(f, "english"),
+            LanguageCode::EnglishAsia => write!(f, "english-asia"),
+            LanguageCode::Japanese => write!(f, "japanese"),
+            LanguageCode::Thai => write!(f, "thai"),
+            LanguageCode::French => write!(f, "french"),
+        }
+    }
 }
 
 impl LanguageCode {
     pub fn to_path(self) -> PathBuf {
-        let path = match self {
-            LanguageCode::ChineseHongKong => "chinese-hong-kong",
-            LanguageCode::ChineseSimplified => "chinese-simplified",
-            LanguageCode::ChineseTaiwan => "chinese-taiwan",
-            LanguageCode::English => "english",
-            LanguageCode::EnglishAsia => "english-asia",
-            LanguageCode::Japanese => "japanese",
-            LanguageCode::Thai => "thai",
-            LanguageCode::French => "french",
-        };
-
+        let path = self.to_string();
         PathBuf::from(path)
     }
 }

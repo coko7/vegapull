@@ -1,161 +1,181 @@
-use std::{
-    fs,
-    io::{self, Write},
-    path::PathBuf,
-    time::Instant,
-};
-
-use anyhow::{bail, Result};
-use clap::ValueEnum;
-use log::{error, info};
+use anyhow::{bail, Context, Result};
+use inquire::{Confirm, Text};
+use log::{debug, info};
+use rayon::prelude::*;
+use std::{fs, path::PathBuf, time::Instant};
 use yansi::Paint;
 
-use crate::{cli::LanguageCode, localizer::Localizer, scraper::OpTcgScraper, storage::DataStore};
+use crate::{
+    card::Card, cli::LanguageCode, get_default_data_dirname, localizer::Localizer,
+    scraper::OpTcgScraper, storage::DataStore,
+};
 
-pub fn show_interactive() -> Result<()> {
-    println!("{}", "+---------------------------+".yellow());
-    println!(
-        "{} {} {}",
-        "|".yellow(),
-        "VegaPull Interactive Mode".blue().bold(),
-        "|".yellow()
+fn handle_existing_dir(data_dir: &PathBuf) -> Result<()> {
+    info!(
+        "directory `{}` exists, prompting user for removal",
+        data_dir.display()
     );
-    println!("{}", "+---------------------------+\n".yellow());
 
-    info!("prompting user for language selection");
-    let prompt = format!("Enter language ({}): ", "english".green());
-    let input = input_prompt(&prompt)?;
-    info!("user input: {}", input);
+    let replace_existing_dir = Confirm::new(&format!(
+        "Directory '{}' already exists. Overwrite?",
+        data_dir.display()
+    ))
+    .with_default(false)
+    .with_help_message("This will delete all existing data in this directory")
+    .prompt()?;
 
-    let value = if input.is_empty() { "english" } else { &input };
-    info!("value to use: {}", value);
+    info!("user input: {}", replace_existing_dir);
 
-    let language = match LanguageCode::from_str(value, true) {
-        Ok(val) => val,
-        Err(_) => bail!("Failed to parse language code, invalid value: {}", value),
-    };
-    info!("using language: {:?}", language);
-
-    info!("prompting user for save location");
-    let prompt = format!("Enter location to save data ({}): ", "./data".green());
-    let input = input_prompt(&prompt)?;
-    info!("user input: {}", input);
-
-    let value = if input.is_empty() { "./data" } else { &input };
-    info!("value to use: {}", value);
-
-    let data_dir = PathBuf::from(&value);
-    if data_dir.exists() {
-        info!(
-            "directory `{}` exists, prompting user for removal",
-            data_dir.display()
-        );
-
-        let prompt = format!(
-            "Dir `{}` already exists. Replace? ({}/{}): ",
-            data_dir.display(),
-            "y".green(),
-            "N".red()
-        );
-        let input = input_prompt(&prompt)?;
-        info!("user input: {}", input);
-
-        let value = if input.is_empty() { "no" } else { &input };
-        info!("value to use: {}", value);
-
-        if is_yes(value) {
-            println!("Cleared directory: `{}`", data_dir.display());
-            fs::remove_dir_all(&data_dir)?;
-            info!("removed directory: {}", data_dir.display());
-        } else {
-            info!("user cancelled directory removal: {}", data_dir.display());
-            bail!("Aborted, directory has been kept: `{}`", data_dir.display());
-        }
+    if replace_existing_dir {
+        println!("Cleared directory: `{}`", data_dir.display());
+        fs::remove_dir_all(data_dir)?;
+        info!("removed directory: {}", data_dir.display());
+    } else {
+        info!("user cancelled directory removal: {}", data_dir.display());
+        bail!("Aborted, directory has been kept: `{}`", data_dir.display());
     }
-
-    info!("prompting user whether to download images");
-    let prompt = format!("Download images as well ({}/{}): ", "y".green(), "N".red());
-    let input = input_prompt(&prompt)?;
-    info!("user input: {}", input);
-
-    let value = if input.is_empty() { "no" } else { &input };
-    info!("value to use: {}", value);
-
-    let download_images = is_yes(value);
-
-    let localizer = Localizer::load(language)?;
-    let scraper = OpTcgScraper::new(localizer);
-    let store = DataStore::new(&data_dir, language);
-
-    println!("\nFetching packs...");
-    let start = Instant::now();
-
-    let packs = scraper.fetch_all_packs()?;
-    store.write_packs(&packs)?;
-
-    let duration = start.elapsed();
-    info!("fetching packs took: {:?}", duration);
-
-    println!("Successfully stored data for {} packs!\n", packs.len());
-
-    let start = Instant::now();
-    for (idx, pack) in packs.iter().enumerate() {
-        print!(
-            "[{}/{}] Fetching cards for pack `{}`...",
-            (idx + 1),
-            packs.len(),
-            pack.id
-        );
-        io::stdout().flush()?;
-
-        let cards = scraper.fetch_all_cards(&pack.id)?;
-        if cards.is_empty() {
-            error!("no cards available for pack `{}`", &pack.id);
-            bail!("No cards found");
-        }
-
-        store.write_cards(&pack.id, &cards)?;
-        info!("fetched and wrote cards for: `{}`", pack.id);
-        println!(" OK");
-
-        if download_images {
-            println!("Downloading images for pack `{}`...", pack.id);
-            for (idx, card) in cards.iter().enumerate() {
-                print!(
-                    "[{}/{}] Downloading image for card `{}`...",
-                    idx + 1,
-                    cards.len(),
-                    card.id
-                );
-                io::stdout().flush()?;
-
-                let img_data = scraper.download_card_image(card)?;
-                store.write_image(card, img_data)?;
-                println!(" OK");
-            }
-        }
-    }
-
-    let duration = start.elapsed();
-    info!("fetching cards (and images) took: {:?}", duration);
-
-    println!("Final data is available in: {}", data_dir.display());
 
     Ok(())
 }
 
-fn is_yes(input: &str) -> bool {
-    let input = input.trim().to_lowercase();
-    matches!(input.as_str(), "yes" | "y")
+fn print_banner() {
+    let version = env!("CARGO_PKG_VERSION");
+    println!("{}", "+-----------------------------+".yellow());
+    println!(
+        "{} {} {}",
+        "|".yellow(),
+        "VegaPull - TCG Data Scraper".blue().bold(),
+        "|".yellow()
+    );
+    println!(
+        "{} {} {}",
+        "|".yellow(),
+        format!("version: {version}             ").white().bold(),
+        "|".yellow()
+    );
+    println!("{}", "+-----------------------------+\n".yellow());
 }
 
-fn input_prompt(text: &str) -> Result<String> {
-    print!("{}", text);
-    io::stdout().flush()?;
+struct InteractiveInputs {
+    language: LanguageCode,
+    data_dir: PathBuf,
+    download_images: bool,
+}
 
-    let mut input = String::new();
-    io::stdin().read_line(&mut input)?;
-    let input = input.trim().to_string();
+fn get_inputs_from_user() -> Result<InteractiveInputs> {
+    let language = LanguageCode::select("Choose a language:").prompt()?;
 
-    Ok(input)
+    info!("using language: {:?}", language);
+
+    let download_dir = Text::new("Enter location to save data:")
+        .with_default(&get_default_data_dirname())
+        .prompt()?;
+
+    let download_dir = PathBuf::from(&download_dir);
+    if download_dir.exists() {
+        handle_existing_dir(&download_dir)?;
+    }
+
+    info!("prompting user whether to download images");
+    let download_images = Confirm::new("Download images as well?")
+        .with_default(false)
+        .with_help_message("Downlading images might take some time")
+        .prompt()?;
+
+    Ok(InteractiveInputs {
+        language,
+        data_dir: download_dir,
+        download_images,
+    })
+}
+
+pub fn show_interactive() -> Result<()> {
+    print_banner();
+
+    let inputs = get_inputs_from_user()?;
+
+    let localizer = Localizer::load(inputs.language)?;
+    let scraper = OpTcgScraper::new(localizer);
+    let store = DataStore::new(&inputs.data_dir, inputs.language);
+
+    eprintln!("Fetching list of packs...");
+
+    let start = Instant::now();
+
+    let packs = scraper.fetch_packs()?;
+    store.write_packs(&packs)?;
+
+    eprintln!("Found {} packs!\n", packs.len());
+
+    let pack_ids = packs.iter().map(|p| p.id.as_str()).collect::<Vec<_>>();
+
+    eprintln!("Now fetching all the cards for each pack...");
+    let all_cards = scraper.fetch_all_cards(&pack_ids, true)?;
+
+    let all_cards_flattened: Vec<Card> = all_cards
+        .clone()
+        .into_iter()
+        .flat_map(|(_k, vs)| vs.into_iter())
+        .collect();
+
+    for (pack_id, cards) in all_cards.iter() {
+        store.write_cards(pack_id, cards)?;
+        debug!("wrote cards for: `{}`", pack_id);
+    }
+
+    eprintln!("Wrote data for all {} packs", pack_ids.len());
+
+    if inputs.download_images {
+        eprintln!("now downloading all images for every single card");
+
+        let images = scraper.download_all_card_images(&all_cards_flattened)?;
+        images.par_iter().for_each(|(card_id, image_data)| {
+            let card = all_cards_flattened
+                .iter()
+                .find(|card| card.id == *card_id)
+                .context("card should exist")
+                .expect("card should exist"); // Use expect() or handle errors differently
+            store
+                .write_image(card, image_data.to_vec())
+                .expect("write_image failed"); // Handle errors per operation
+            debug!("wrote image_data for: {}", card_id);
+        });
+
+        // for (card_id, image_data) in images.iter() {
+        //     let card = all_cards_flattened
+        //         .iter()
+        //         .find(|card| card.id == *card_id)
+        //         .context("card should exist")?;
+        //     store.write_image(card, image_data.to_vec())?;
+        //     debug!("wrote image_data for: {}", card_id);
+        // }
+    }
+
+    // for (pack_id, cards) in all_cards.iter() {
+    //     store.write_cards(&pack_id, &cards)?;
+    //     info!("wrote cards for: `{}`", pack_id);
+    //
+    //     if inputs.download_images {
+    //         let images = scraper.download_all_card_images(&cards)?;
+    //         for (card_id, image_data) in images.iter() {
+    //             let card = all_cards_flattened
+    //                 .iter()
+    //                 .find(|card| card.id == *card_id)
+    //                 .context("card should exist")?;
+    //             store.write_image(card, image_data.to_vec())?;
+    //             debug!("wrote image_data for: {}", card_id);
+    //         }
+    //     }
+    // }
+
+    let duration = start.elapsed();
+    info!("fetching cards (and images) took: {:?}", duration);
+
+    eprintln!(
+        "\nFinal data is available in: {}",
+        inputs.data_dir.display()
+    );
+    eprintln!("Full download took: {:?}", duration);
+
+    Ok(())
 }
