@@ -8,6 +8,9 @@ The CLI directly goes against the [onepiece-cardgame.com](https://onepiece-cardg
 
 Since [v0.5.0](https://crates.io/crates/vegapull/0.5.0), vegapull now supports multi-threaded image downloads natively for a ***Blazingly faaaast experience 🚀***
 
+> [!WARNING]
+> 🚧 I am currently working on a massive rework of `vegapull` on branch [v1-rework](https://github.com/coko7/vegapull/tree/v1-rework). This rework will introduce breaking changes to the CLI and the support for multi-threaded downloads on every single pull modes. v1 will also come with a big improvement to the existing **interactive** mode as I want to make it the default mode for most users.
+
 ![demo](https://github.com/user-attachments/assets/6ac89611-08b5-4caa-ba83-a696929a2e37)
 
 ## Where can I find prefetched datasets?
