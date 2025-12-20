@@ -51,15 +51,15 @@ impl OpTcgScraper {
         let start = Instant::now();
 
         let url = self.cardlist_endpoint();
-        info!("GET `{}`", url);
+        debug!("GET `{}`", url);
 
         let response = self.client.get(url).send()?.text()?;
 
-        info!("parsing HTML document");
+        debug!("parsing HTML document");
         let document = scraper::Html::parse_document(&response);
 
         let sel = "div.seriesCol>select#series>option";
-        info!("fetching series (packs) ({})...", sel);
+        debug!("fetching series (packs) ({})...", sel);
 
         let series_selector = scraper::Selector::parse(sel).unwrap();
 
@@ -76,7 +76,7 @@ impl OpTcgScraper {
         }
 
         let duration = start.elapsed();
-        info!("fetching packs took: {:?}", duration);
+        debug!("fetching packs took: {:?}", duration);
 
         Ok(packs)
     }

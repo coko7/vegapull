@@ -47,24 +47,29 @@ fn process_args(args: Cli) -> Result<()> {
     initialize_configs()?;
 
     match args.command {
-        cli::Commands::Packs { output_file } => list_packs(args.language, output_file.as_deref()),
-        cli::Commands::Cards {
-            pack_id,
-            output_path: output_file,
-            mode,
-        } => list_cards(
-            args.language,
-            &pack_id.to_string_lossy(),
-            output_file.as_deref(),
-            mode,
-        ),
-        cli::Commands::Interactive => interactive::show_interactive(),
-        // cli::Commands::Images {
-        //     pack_id,
-        //     output_dir,
-        // } => download_images(args.language, &pack_id.to_string_lossy(), &output_dir),
-        cli::Commands::TestConfig => Localizer::find_locales(),
+        cli::Commands::Pull {
+            command,
+            language,
+            config_directory_path,
+            user_agent,
+        } => match command {
+            cli::PullSubCommands::All => interactive::show_interactive(),
+            cli::PullSubCommands::Packs { output_file } => {
+                list_packs(language, output_file.as_deref())
+            }
+            cli::PullSubCommands::Cards {
+                pack_id,
+                output_path,
+                mode,
+            } => download_cards(
+                language,
+                &pack_id.to_string_lossy(),
+                output_path.as_deref(),
+                mode,
+            ),
+        },
         cli::Commands::Diff { pack_files } => show_diffs(pack_files),
+        cli::Commands::Config => Localizer::find_locales(),
     }
 }
 
@@ -221,7 +226,7 @@ fn list_packs(language: LanguageCode, output_file: Option<&Path>) -> Result<()> 
     Ok(())
 }
 
-fn list_cards(
+fn download_cards(
     language: LanguageCode,
     pack_id: &str,
     output_path: Option<&Path>,

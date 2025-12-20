@@ -1,3 +1,6 @@
+use anyhow::Result;
+use clap::{command, Parser, Subcommand, ValueEnum};
+use inquire_derive::Selectable;
 use std::{
     ffi::OsString,
     fmt::{self},
@@ -5,28 +8,16 @@ use std::{
     str::FromStr,
 };
 
-use anyhow::Result;
-use clap::{command, Parser, Subcommand, ValueEnum};
-use inquire_derive::Selectable;
-
 #[derive(Debug, Parser)]
-#[command(name = "vegapull")]
 #[command(
-    about = "Dynamically fetch data for the One Piece TCG from official sites.",
+    name = "vega",
+    about = "Scrape cards data from the official One Piece TCG website",
     long_about = None
 )]
 #[command(version)]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Commands,
-
-    /// Language to use for the data
-    #[arg(short, long, alias = "lang", value_name = "LANGUAGE", default_value_t = LanguageCode::English, value_enum)]
-    pub language: LanguageCode,
-
-    /// Specify path to the config directory (where locales are stored)
-    #[arg(short = 'c', long = "config-dir")]
-    pub config_directory_path: Option<PathBuf>,
 
     #[command(flatten)]
     pub verbose: clap_verbosity_flag::Verbosity,
@@ -43,22 +34,18 @@ pub(crate) enum CardDownloadMode {
 }
 
 #[derive(Debug, Subcommand)]
-pub enum Commands {
-    /// Get the list of all existing packs
-    #[command(name = "pack", alias = "pak")]
+pub enum PullSubCommands {
+    /// Download the complete dataset for a given language
+    #[command(name = "all", alias = "records")]
+    All,
+    /// Download the list of existing packs
+    #[command(name = "packs", alias = "pack")]
     Packs {
         /// Save output directly to <OUTPUT_FILE>
         #[arg(short, long = "out")]
         output_file: Option<PathBuf>,
     },
-    /// Compare datasets
-    #[command(name = "diff", alias = "df")]
-    Diff {
-        /// Output differences between two packs.json files
-        #[arg(short, long = "packs", num_args = 2, value_names = ["FILE1", "FILE2"])]
-        pack_files: Option<Vec<PathBuf>>,
-    },
-    /// Get all cards within the given pack
+    /// Download all cards for a given pack
     #[command(name = "cards", alias = "card")]
     Cards {
         /// ID of the pack
@@ -71,12 +58,38 @@ pub enum Commands {
         #[arg(short, long, value_enum, default_value_t = CardDownloadMode::DataOnly)]
         mode: CardDownloadMode,
     },
-    /// Launch into interactive mode
-    #[command(name = "inter", alias = "interactive", alias = "int")]
-    Interactive,
-    /// Test what configuration files are found
-    #[command(name = "test-config", alias = "test-conf")]
-    TestConfig,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum Commands {
+    /// Download datasets from the official site
+    #[command(name = "pull", alias = "p", alias = "fetch", alias = "punk")]
+    Pull {
+        #[command(subcommand)]
+        command: PullSubCommands,
+
+        /// Dataset to use
+        #[arg(short, long, alias = "lang", value_name = "LANGUAGE", default_value_t = LanguageCode::English, value_enum)]
+        language: LanguageCode,
+
+        /// Path to the config directory (where locales are stored)
+        #[arg(short = 'c', long = "config-dir")]
+        config_directory_path: Option<PathBuf>,
+
+        /// Send User-Agent <NAME> to server
+        #[arg(short = 'A', long = "user-agent", value_name = "NAME")]
+        user_agent: Option<String>,
+    },
+    /// Compare datasets
+    #[command(name = "diff", alias = "df")]
+    Diff {
+        /// Output differences between two packs.json files
+        #[arg(short, long = "packs", num_args = 2, value_names = ["FILE1", "FILE2"])]
+        pack_files: Option<Vec<PathBuf>>,
+    },
+    /// Output current configuration
+    #[command(name = "config", alias = "conf")]
+    Config,
 }
 
 #[derive(ValueEnum, Copy, Clone, Debug, PartialEq, Eq, Selectable)]
