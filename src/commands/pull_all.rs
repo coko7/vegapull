@@ -6,8 +6,8 @@ use std::{fs, path::PathBuf, time::Instant};
 use yansi::Paint;
 
 use crate::{
-    card::Card, cli::LanguageCode, get_default_data_dirname, localizer::Localizer,
-    scraper::OpTcgScraper, storage::DataStore,
+    card::Card, cli::LanguageCode, localizer::Localizer, scraper::OpTcgScraper, storage::DataStore,
+    utils,
 };
 
 fn print_banner() {
@@ -43,7 +43,7 @@ fn get_inputs_from_user() -> Result<InteractiveInputs> {
     info!("using language: {:?}", language);
 
     let download_dir = Text::new("Enter location to save data:")
-        .with_default(&get_default_data_dirname())
+        .with_default(&utils::get_default_data_dirname())
         .prompt()?;
 
     let download_dir = PathBuf::from(&download_dir);
@@ -90,13 +90,22 @@ fn handle_existing_dir(data_dir: &PathBuf) -> Result<()> {
     Ok(())
 }
 
-pub fn show_interactive() -> Result<()> {
+pub fn pull_all(
+    language: LanguageCode,
+    output_path: Option<PathBuf>,
+    config_path: Option<PathBuf>,
+    user_agent: Option<String>,
+) -> Result<()> {
+    pull_all_interactive(config_path, user_agent)
+}
+
+fn pull_all_interactive(config_path: Option<PathBuf>, user_agent: Option<String>) -> Result<()> {
     print_banner();
 
     let inputs = get_inputs_from_user()?;
 
     let localizer = Localizer::load(inputs.language)?;
-    let scraper = OpTcgScraper::new(localizer);
+    let scraper = OpTcgScraper::new(localizer, user_agent);
     let store = DataStore::new(&inputs.data_dir, inputs.language);
 
     eprintln!("Fetching list of packs...");

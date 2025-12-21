@@ -23,12 +23,18 @@ pub struct OpTcgScraper {
 static APP_USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
 
 impl OpTcgScraper {
-    pub fn new(localizer: Localizer) -> OpTcgScraper {
+    pub fn new(localizer: Localizer, user_agent: Option<String>) -> OpTcgScraper {
+        let user_agent = if let Some(user_agent) = user_agent {
+            user_agent
+        } else {
+            APP_USER_AGENT.to_string()
+        };
+
         OpTcgScraper {
             base_url: localizer.hostname.clone(),
             localizer,
             client: reqwest::blocking::ClientBuilder::new()
-                .user_agent(APP_USER_AGENT)
+                .user_agent(user_agent)
                 .timeout(Duration::from_secs(30))
                 .build()
                 .unwrap(),

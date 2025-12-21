@@ -40,20 +40,12 @@ pub enum PullSubCommands {
     All,
     /// Download the list of existing packs
     #[command(name = "packs", alias = "pack")]
-    Packs {
-        /// Save output directly to <OUTPUT_FILE>
-        #[arg(short, long = "out")]
-        output_file: Option<PathBuf>,
-    },
+    Packs,
     /// Download all cards for a given pack
     #[command(name = "cards", alias = "card")]
     Cards {
         /// ID of the pack
         pack_id: OsString,
-
-        /// Save downloaded data to <OUTPUT_PATH> instead of stdin
-        #[arg(short, long = "output-path")]
-        output_path: Option<PathBuf>,
 
         #[arg(short, long, value_enum, default_value_t = CardDownloadMode::DataOnly)]
         mode: CardDownloadMode,
@@ -68,25 +60,29 @@ pub enum Commands {
         #[command(subcommand)]
         command: PullSubCommands,
 
-        /// Dataset to use
+        /// Dataset to use (card descriptions and images will vary)
         #[arg(short, long, alias = "lang", value_name = "LANGUAGE", default_value_t = LanguageCode::English, value_enum)]
         language: LanguageCode,
 
+        /// Download data to <PATH>
+        #[arg(short, long = "output", value_name = "PATH")]
+        output_path: Option<PathBuf>,
+
         /// Path to the config directory (where locales are stored)
         #[arg(short = 'c', long = "config-dir")]
-        config_directory_path: Option<PathBuf>,
+        config_path: Option<PathBuf>,
 
         /// Send User-Agent <NAME> to server
         #[arg(short = 'A', long = "user-agent", value_name = "NAME")]
         user_agent: Option<String>,
     },
     /// Compare datasets
-    #[command(name = "diff", alias = "df")]
-    Diff {
-        /// Output differences between two packs.json files
-        #[arg(short, long = "packs", num_args = 2, value_names = ["FILE1", "FILE2"])]
-        pack_files: Option<Vec<PathBuf>>,
-    },
+    // #[command(name = "diff", alias = "df")]
+    // Diff {
+    //     /// Output differences between two packs.json files
+    //     #[arg(short, long = "packs", num_args = 2, value_names = ["FILE1", "FILE2"])]
+    //     pack_files: Option<Vec<PathBuf>>,
+    // },
     /// Output current configuration
     #[command(name = "config", alias = "conf")]
     Config,
