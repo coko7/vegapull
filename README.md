@@ -1,4 +1,4 @@
-# 👒 vegapull
+# 👒 vega
 
 ![build](https://github.com/coko7/vegapull/actions/workflows/rust.yml/badge.svg)
 
@@ -6,7 +6,8 @@ A CLI utility to retrieve data for the One Piece Trading Cards Game (TCG).
 
 The CLI directly goes against the [onepiece-cardgame.com](https://onepiece-cardgame.com) website and attempts to scrap information such as packs, cards and images.
 
-> [!INFO] 🚀 [v1.0.0](https://crates.io/crates/vegapull/1.0.0) is out now! The entire CLI has been refactored to be more user-friendly.
+> [!IMPORTANT]
+> 🚀 [v1.0.0](https://crates.io/crates/vegapull/1.0.0) is out now! The entire CLI has been refactored to be more user-friendly.
 > I have renamed it from ~~vegapull~~ to simply **vega**. This had been bothering me for a while and I think it makes it more intuitive to call commands.
 > For example, if you wanted to pull all data in v1.0.0, you would write `vega pull all`.
 > The greatest change in v1 is the support for multi-threaded downloads in the rust cli directly.
