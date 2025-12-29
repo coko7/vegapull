@@ -6,18 +6,15 @@ A CLI utility to retrieve data for the One Piece Trading Cards Game (TCG).
 
 The CLI directly goes against the [onepiece-cardgame.com](https://onepiece-cardgame.com) website and attempts to scrap information such as packs, cards and images.
 
-Since [v0.5.0](https://crates.io/crates/vegapull/0.5.0), vegapull now supports multi-threaded image downloads natively for a ***Blazingly faaaast experience 🚀***
+> [!INFO] 🚀 [v1.0.0](https://crates.io/crates/vegapull/1.0.0) is out now! The entire CLI has been refactored to be more user-friendly.
+> I have renamed it from ~~vegapull~~ to simply **vega**. This had been bothering me for a while and I think it makes it more intuitive to call commands.
+> For example, if you wanted to pull all data in v1.0.0, you would write `vega pull all`.
+> The greatest change in v1 is the support for multi-threaded downloads in the rust cli directly.
+> Previously, this would have been achieved through usage of helper scripts written in bash/Go.
+> Now, it's all natively built into **vega** itself.
+> The interactive mode has also been improved a lot and is now the new default.
 
-> [!WARNING]
-> 🚧 I am currently working on a massive rework of `vegapull` on branch [v1-rework](https://github.com/coko7/vegapull/tree/v1-rework). This rework will introduce breaking changes to the CLI and the support for multi-threaded downloads on every single pull modes. v1 will also come with a big improvement to the existing **interactive** mode as I want to make it the default mode for most users.
-
-![demo](https://github.com/user-attachments/assets/6ac89611-08b5-4caa-ba83-a696929a2e37)
-
-## Where can I find prefetched datasets?
-
-There are currently two Git repositories with JSON data:
-- [buhbbl/punk-records](https://github.com/buhbbl/punk-records) (all languages)
-- [Coko7/vegapull-records](https://github.com/Coko7/vegapull-records) (english/japanese only)
+<!-- ![demo](https://github.com/user-attachments/assets/6ac89611-08b5-4caa-ba83-a696929a2e37) -->
 
 ## Installation
 
@@ -64,6 +61,12 @@ Options:
   -V, --version
           Print version
 ```
+
+## Where can I find prefetched datasets?
+
+There are currently two Git repositories with JSON data:
+- [buhbbl/punk-records](https://github.com/buhbbl/punk-records) (all languages)
+- [Coko7/vegapull-records](https://github.com/Coko7/vegapull-records) (english/japanese only)
 
 ## Helper Scripts
 

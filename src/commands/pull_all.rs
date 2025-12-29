@@ -2,7 +2,7 @@ use anyhow::{bail, Result};
 use inquire::{Confirm, Text};
 use log::{debug, info};
 use rayon::prelude::*;
-use std::{fs, path::PathBuf, time::Instant};
+use std::{collections::HashMap, fs, path::PathBuf, time::Instant};
 use yansi::Paint;
 
 use crate::{
@@ -43,7 +43,7 @@ fn get_inputs_from_user() -> Result<InteractiveInputs> {
     info!("using language: {:?}", language);
 
     let download_dir = Text::new("Enter location to save data:")
-        .with_default(&utils::get_default_data_dirname())
+        .with_default(&utils::get_default_data_dirname(language))
         .prompt()?;
 
     let download_dir = PathBuf::from(&download_dir);
@@ -92,7 +92,7 @@ fn handle_existing_dir(data_dir: &PathBuf) -> Result<()> {
 
 pub fn pull_all(
     language: LanguageCode,
-    output_path: Option<PathBuf>,
+    output_dir: Option<PathBuf>,
     config_path: Option<PathBuf>,
     user_agent: Option<String>,
 ) -> Result<()> {
@@ -122,27 +122,28 @@ fn pull_all_interactive(config_path: Option<PathBuf>, user_agent: Option<String>
     eprintln!("Now fetching all the cards for each pack...");
     let all_cards = scraper.fetch_all_cards(&pack_ids, true)?;
 
-    let all_cards_flattened: Vec<Card> = all_cards
-        .clone()
-        .into_iter()
-        .flat_map(|(_k, vs)| vs.into_iter())
-        .collect();
-
     for (pack_id, cards) in all_cards.iter() {
         store.write_cards(pack_id, cards)?;
         debug!("wrote cards for: `{}`", pack_id);
     }
+
+    let cards_by_id: HashMap<String, Card> = all_cards
+        .into_iter()
+        .flat_map(|(_, cards)| cards)
+        .map(|card| (card.id.to_owned(), card))
+        .collect();
 
     eprintln!("Wrote data for all {} packs", pack_ids.len());
 
     if inputs.download_images {
         eprintln!("Downloading all images for every single card...");
 
-        let images = scraper.download_all_card_images(&all_cards_flattened)?;
+        let all_cards = cards_by_id.values().collect::<Vec<_>>();
+        let images = scraper.fetch_all_card_images(&all_cards, true)?;
+
         images.par_iter().for_each(|(card_id, image_data)| {
-            let card = all_cards_flattened
-                .iter()
-                .find(|card| card.id == *card_id)
+            let card = cards_by_id
+                .get(card_id)
                 .unwrap_or_else(|| panic!("card should exist: {card_id}"));
 
             store
@@ -161,3 +162,21 @@ fn pull_all_interactive(config_path: Option<PathBuf>, user_agent: Option<String>
     eprintln!("Full download completed after: {:?}", duration);
     Ok(())
 }
+
+// fn download_images(scraper: &OpTcgScraper, cards: &HashMap<String, Card>) -> Result<()> {
+//     let card_values = cards.values().collect::<Vec<_>>();
+//     let images = scraper.fetch_all_card_images(&cards)?;
+//
+//     images.par_iter().for_each(|(card_id, image_data)| {
+//         let card = cards_by_id
+//             .get(card_id)
+//             .unwrap_or_else(|| panic!("card should exist: {card_id}"));
+//
+//         store
+//             .write_image(card, image_data.to_vec())
+//             .unwrap_or_else(|_| panic!("write_image failed for: {card_id}"));
+//         debug!("wrote image_data for: {}", card_id);
+//     });
+//
+//     Ok(())
+// }

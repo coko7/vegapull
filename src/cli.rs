@@ -23,16 +23,6 @@ pub struct Cli {
     pub verbose: clap_verbosity_flag::Verbosity,
 }
 
-#[derive(Copy, Clone, Debug, ValueEnum, PartialEq, Eq)]
-pub(crate) enum CardDownloadMode {
-    #[value(name = "image", alias = "img", alias = "i")]
-    ImageOnly = 1,
-    #[value(name = "data", alias = "d")]
-    DataOnly = 2,
-    #[value(name = "all", alias = "a")]
-    All = 3,
-}
-
 #[derive(Debug, Subcommand)]
 pub enum PullSubCommands {
     /// Download the complete dataset for a given language
@@ -47,8 +37,9 @@ pub enum PullSubCommands {
         /// ID of the pack
         pack_id: OsString,
 
-        #[arg(short, long, value_enum, default_value_t = CardDownloadMode::DataOnly)]
-        mode: CardDownloadMode,
+        /// Download card images as well
+        #[arg(short = 'a', long = "with-images")]
+        with_images: bool,
     },
 }
 
@@ -64,9 +55,9 @@ pub enum Commands {
         #[arg(short, long, alias = "lang", value_name = "LANGUAGE", default_value_t = LanguageCode::English, value_enum)]
         language: LanguageCode,
 
-        /// Download data to <PATH>
+        /// Save downloaded data to <DIR>
         #[arg(short, long = "output", value_name = "PATH")]
-        output_path: Option<PathBuf>,
+        output_dir: Option<PathBuf>,
 
         /// Path to the config directory (where locales are stored)
         #[arg(short = 'c', long = "config-dir")]

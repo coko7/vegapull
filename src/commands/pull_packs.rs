@@ -1,36 +1,37 @@
 use anyhow::Result;
-use log::info;
-use std::{fs, path::Path, time::Instant};
+use log::debug;
+use std::{path::Path, time::Instant};
 
-use crate::{cli::LanguageCode, localizer::Localizer, scraper::OpTcgScraper};
+use crate::{
+    cli::LanguageCode, localizer::Localizer, scraper::OpTcgScraper, storage::DataStore, utils,
+};
 
 pub fn pull_packs(
     language: LanguageCode,
-    output_file: Option<&Path>,
+    output_dir: Option<&Path>,
     user_agent: Option<String>,
 ) -> Result<()> {
+    let default_data_path = utils::get_default_data_dir(language)?;
+    let output_dir = output_dir.unwrap_or(&default_data_path);
+
     let localizer = Localizer::load(language)?;
     let scraper = OpTcgScraper::new(localizer, user_agent);
+    let store = DataStore::new(output_dir, language);
 
-    info!("fetching all pack ids...");
+    eprintln!("fetching list of packs...");
     let start = Instant::now();
 
-    let all_packs = scraper.fetch_packs()?;
-    info!("successfully fetched {} packs!", all_packs.len());
+    let packs = scraper.fetch_packs()?;
+    store.write_packs(&packs)?;
 
-    let out_json = serde_json::to_string(&all_packs)?;
-
-    if let Some(path) = output_file {
-        if let Some(parent) = path.parent() {
-            fs::create_dir_all(parent)?;
-        }
-        fs::write(path, out_json)?;
-    } else {
-        println!("{}", out_json);
-    }
+    println!(
+        "downloaded {} packs to: {}",
+        packs.len(),
+        output_dir.display()
+    );
 
     let duration = start.elapsed();
 
-    info!("list_packs took: {:?}", duration);
+    debug!("pull_packs took: {:?}", duration);
     Ok(())
 }

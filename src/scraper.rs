@@ -54,14 +54,19 @@ impl OpTcgScraper {
     }
 
     pub fn fetch_packs(&self) -> Result<Vec<Pack>> {
-        let start = Instant::now();
-
         let url = self.cardlist_endpoint();
         debug!("GET `{}`", url);
 
+        let start = Instant::now();
+
         let response = self.client.get(url).send()?.text()?;
 
+        let duration = start.elapsed();
+        debug!("fetching packs took: {:?}", duration);
+
         debug!("parsing HTML document");
+        let start = Instant::now();
+
         let document = scraper::Html::parse_document(&response);
 
         let sel = "div.seriesCol>select#series>option";
@@ -82,7 +87,7 @@ impl OpTcgScraper {
         }
 
         let duration = start.elapsed();
-        debug!("fetching packs took: {:?}", duration);
+        debug!("parsing packs took: {:?}", duration);
 
         Ok(packs)
     }
@@ -172,19 +177,24 @@ impl OpTcgScraper {
         Ok(cards)
     }
 
-    pub fn download_all_card_images(&self, cards: &[Card]) -> Result<HashMap<String, Vec<u8>>> {
+    pub fn fetch_all_card_images(
+        &self,
+        cards: &[&Card],
+        report_progress: bool,
+    ) -> Result<HashMap<String, Vec<u8>>> {
         cards
             .par_iter()
             .map(|card| {
+                if report_progress {
+                    eprintln!("downloaded image for card: {}", card.id)
+                }
                 let card_id = card.id.clone();
-                debug!("fetching all images via rayon");
-                self.download_card_image(card)
-                    .map(|images| (card_id, images))
+                self.fetch_card_image(card).map(|images| (card_id, images))
             })
             .collect()
     }
 
-    pub fn download_card_image(&self, card: &Card) -> Result<Vec<u8>> {
+    pub fn fetch_card_image(&self, card: &Card) -> Result<Vec<u8>> {
         let full_url = self.get_img_full_url(&card.img_url);
 
         debug!("downloading image `{}`...", full_url);
