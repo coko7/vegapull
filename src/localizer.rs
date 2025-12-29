@@ -80,25 +80,6 @@ impl Localizer {
         Self::match_with_alias(&self.rarities, &self.aliases.rarities, value)
     }
 
-    pub fn find_locales() -> Result<()> {
-        let config_dir = config::get_config_dir()?;
-        ensure!(
-            config_dir.exists(),
-            format!("config directory not found: {}", config_dir.display())
-        );
-
-        let entries = fs::read_dir(&config_dir)?;
-        println!("config directory: {}", config_dir.display());
-
-        for entry in entries {
-            let entry = entry?;
-            let file_name = entry.file_name();
-            println!("- {}", file_name.to_string_lossy());
-        }
-
-        Ok(())
-    }
-
     pub fn load(language: LanguageCode) -> Result<Localizer> {
         match language {
             LanguageCode::ChineseHongKong => Self::load_from_file("zh_hk"),

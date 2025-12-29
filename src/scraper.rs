@@ -1,6 +1,12 @@
 use anyhow::{bail, Context, Result};
 use log::{debug, info};
-use std::{collections::HashMap, thread, time::Duration};
+use rayon::prelude::*;
+use scraper::Html;
+use std::{
+    collections::HashMap,
+    thread,
+    time::{Duration, Instant},
+};
 
 use crate::{
     card::{Card, CardScraper},
@@ -17,12 +23,18 @@ pub struct OpTcgScraper {
 static APP_USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
 
 impl OpTcgScraper {
-    pub fn new(localizer: Localizer) -> OpTcgScraper {
+    pub fn new(localizer: Localizer, user_agent: Option<String>) -> OpTcgScraper {
+        let user_agent = if let Some(user_agent) = user_agent {
+            user_agent
+        } else {
+            APP_USER_AGENT.to_string()
+        };
+
         OpTcgScraper {
             base_url: localizer.hostname.clone(),
             localizer,
             client: reqwest::blocking::ClientBuilder::new()
-                .user_agent(APP_USER_AGENT)
+                .user_agent(user_agent)
                 .timeout(Duration::from_secs(30))
                 .build()
                 .unwrap(),
@@ -41,17 +53,24 @@ impl OpTcgScraper {
         full_url
     }
 
-    pub fn fetch_all_packs(&self) -> Result<Vec<Pack>> {
+    pub fn fetch_packs(&self) -> Result<Vec<Pack>> {
         let url = self.cardlist_endpoint();
-        info!("GET `{}`", url);
+        debug!("GET `{}`", url);
+
+        let start = Instant::now();
 
         let response = self.client.get(url).send()?.text()?;
 
-        info!("parsing HTML document");
+        let duration = start.elapsed();
+        debug!("fetching packs took: {:?}", duration);
+
+        debug!("parsing HTML document");
+        let start = Instant::now();
+
         let document = scraper::Html::parse_document(&response);
 
         let sel = "div.seriesCol>select#series>option";
-        info!("fetching series (packs) ({})...", sel);
+        debug!("fetching series (packs) ({})...", sel);
 
         let series_selector = scraper::Selector::parse(sel).unwrap();
 
@@ -67,16 +86,50 @@ impl OpTcgScraper {
             }
         }
 
-        info!("processed packs");
+        let duration = start.elapsed();
+        debug!("parsing packs took: {:?}", duration);
+
         Ok(packs)
     }
 
-    pub fn fetch_all_cards(&self, pack_id: &str) -> Result<Vec<Card>> {
+    pub fn fetch_all_cards(
+        &self,
+        pack_ids: &[&str],
+        report_progress: bool,
+    ) -> Result<HashMap<String, Vec<Card>>> {
+        pack_ids
+            .par_iter()
+            .map(|&pid| {
+                info!("fetching all cards for pack {} via rayon", pid);
+                let pack_id = pid.to_string();
+                self.fetch_cards(&pack_id).map(|cards| {
+                    if report_progress {
+                        eprintln!("Fetched cards for pack {pid}")
+                    }
+                    (pack_id, cards)
+                })
+            })
+            .collect()
+    }
+
+    fn parse_html(response: &str) -> Html {
+        let start = Instant::now();
+        let document = scraper::Html::parse_document(response);
+
+        let duration = start.elapsed();
+        info!("parsing HTML took: {:?}", duration);
+
+        document
+    }
+
+    pub fn fetch_cards(&self, pack_id: &str) -> Result<Vec<Card>> {
         let url = self.cardlist_endpoint();
         info!("GET `{}`", url);
 
         let mut params = HashMap::new();
         params.insert("series", pack_id);
+
+        let start = Instant::now();
 
         let response = self
             .client
@@ -85,13 +138,17 @@ impl OpTcgScraper {
             .send()?
             .text()?;
 
-        info!("parsing HTML document");
-        let document = scraper::Html::parse_document(&response);
+        let duration = start.elapsed();
+        info!("fetching HTML document took: {:?}", duration);
+
+        let document = Self::parse_html(&response);
 
         let sel = "div.resultCol>a";
         info!("fetching cards for pack `{}` ({})...", pack_id, sel);
 
         let card_ids_selector = scraper::Selector::parse(sel).unwrap();
+
+        let start = Instant::now();
 
         let mut cards = Vec::new();
         for element in document.select(&card_ids_selector) {
@@ -114,11 +171,30 @@ impl OpTcgScraper {
             };
         }
 
-        info!("processed cards for pack `{}`", pack_id);
+        let duration = start.elapsed();
+        info!("processed cards for pack {} in {:?}", pack_id, duration);
+
         Ok(cards)
     }
 
-    pub fn download_card_image(&self, card: &Card) -> Result<Vec<u8>> {
+    pub fn fetch_all_card_images(
+        &self,
+        cards: &[&Card],
+        report_progress: bool,
+    ) -> Result<HashMap<String, Vec<u8>>> {
+        cards
+            .par_iter()
+            .map(|card| {
+                if report_progress {
+                    eprintln!("downloaded image for card: {}", card.id)
+                }
+                let card_id = card.id.clone();
+                self.fetch_card_image(card).map(|images| (card_id, images))
+            })
+            .collect()
+    }
+
+    pub fn fetch_card_image(&self, card: &Card) -> Result<Vec<u8>> {
         let full_url = self.get_img_full_url(&card.img_url);
 
         debug!("downloading image `{}`...", full_url);

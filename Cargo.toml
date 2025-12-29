@@ -1,6 +1,6 @@
 [package]
 name = "vegapull"
-version = "0.5.0"
+version = "1.0.0"
 description = "Command line tool for scraping data for the One Piece Trading Card Game"
 repository = "https://github.com/Coko7/vegapull"
 authors = ["Coko <91132775+Coko7@users.noreply.github.com>"]
@@ -10,6 +10,10 @@ rust-version = "1.74.1"
 keywords = ["cli", "one-piece", "tcg", "scraping", "data"]
 categories = ["command-line-utilities", "filesystem", "multimedia::images"]
 include = ["src/**", "config/*.toml", "Cargo.toml", "README.md"]
+
+[[bin]]
+name = "vega"
+path = "src/main.rs"
 
 [dependencies]
 anyhow = "1.0.86"
@@ -27,3 +31,6 @@ serde_json = "1.0"
 toml = "0.8.19"
 yansi = "1.0.1"
 unicode-normalization = "0.1.24"
+rayon = "1.10.0"
+inquire = "0.9.1"
+inquire-derive = "0.9.0"

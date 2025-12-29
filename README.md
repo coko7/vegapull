@@ -1,79 +1,80 @@
-# 👒 vegapull
+# 👒 vega (pull)
 
 ![build](https://github.com/coko7/vegapull/actions/workflows/rust.yml/badge.svg)
 
 A CLI utility to retrieve data for the One Piece Trading Cards Game (TCG).
 
-The CLI directly goes against the [onepiece-cardgame.com](https://onepiece-cardgame.com) website and attempts to scrap information such as packs, cards and images.
-
-Since [v0.5.0](https://crates.io/crates/vegapull/0.5.0), vegapull now supports multi-threaded image downloads natively for a ***Blazingly faaaast experience 🚀***
+It goes directly goes against the [onepiece-cardgame.com](https://en.onepiece-cardgame.com) website and attempts to scrap information such as packs, cards and images.
 
 > [!WARNING]
-> 🚧 I am currently working on a massive rework of `vegapull` on branch [v1-rework](https://github.com/coko7/vegapull/tree/v1-rework). This rework will introduce breaking changes to the CLI and the support for multi-threaded downloads on every single pull modes. v1 will also come with a big improvement to the existing **interactive** mode as I want to make it the default mode for most users.
+> Copyright disclaimer:
+> - **Data** downloaded using this tool is copyrighted by ©Eiichiro Oda/Shueisha, Toei Animation, Bandai Namco Entertainment Inc.
+> - **Source code** for this tool is available under the GNU Affero General Public License 3.0 or later. See [LICENSE](LICENSE) for more details.
 
-![demo](https://github.com/user-attachments/assets/6ac89611-08b5-4caa-ba83-a696929a2e37)
+> [!IMPORTANT]
+> ✨ [v1.0.0](https://crates.io/crates/vegapull/1.0.0) is out now! The entire tool has been reworked to be user-friendly and ***blazingly fast 🚀***
+>
+> Changes:
+> - rename from ~~vegapull~~ to **vega** as it fits better when combining with subcommands
+> - rename subcommands and reorder them
+> - build support for parallel downloads for json and images directly into the tool
+> - rework and improve the interactive mode
+> - add new options (like setting the user agent for downloading)
+> - bug fixes
 
-## Where can I find prefetched datasets?
+![demo](https://github.com/user-attachments/assets/c236f123-e519-40fd-b9bd-00e7ba50ef6b)
 
-There are currently two Git repositories with JSON data:
-- [buhbbl/punk-records](https://github.com/buhbbl/punk-records) (all languages)
-- [Coko7/vegapull-records](https://github.com/Coko7/vegapull-records) (english/japanese only)
+<!-- Old demo: ![demo](https://github.com/user-attachments/assets/6ac89611-08b5-4caa-ba83-a696929a2e37) -->
 
 ## Installation
 
 The easiest way to install is through [crates.io](https://crates.io/crates/vegapull):
-```console
+```sh
 cargo install vegapull
 ```
 
 The other option is to build from source:
-```console
-git clone https://github.com/Coko7/vegapull.git
-cd vegapull 
+```sh
+git clone https://github.com/coko7/vegapull.git
+cd vegapull
 cargo build --release
 ```
 
 ## How to use?
 
+To download all data from One Piece TCG, it's recommended to use the interactive mode:
 ```console
-coko7@example:~$ vegapull -h
-Dynamically fetch data for the One Piece TCG from official sites.
-
-Usage: vegapull [OPTIONS] <COMMAND>
-
-Commands:
-  pack         Get the list of all existing packs
-  diff         Compare datasets
-  card         Get all cards within the given pack
-  image        Download all card images for a given pack
-  inter        Launch into interactive mode
-  test-config  Test what configuration files are found
-  help         Print this message or the help of the given subcommand(s)
-
-Options:
-  -l, --language <LANGUAGE>
-          Language to use for the data [default: english] [possible values: chinese-hongkong, chinese-simplified, chinese-taiwan, english, english-asia, japanese, thai, french]
-  -c, --config-dir <CONFIG_DIRECTORY_PATH>
-          Specify path to the config directory (where locales are stored)
-  -v, --verbose...
-          Increase logging verbosity
-  -q, --quiet...
-          Decrease logging verbosity
-  -h, --help
-          Print help
-  -V, --version
-          Print version
+$ vega pull all
 ```
+
+You can restrict the download further by using the other subcommands:
+- `vega pull packs`: downloads the list of packs and stops
+- `vega pull cards 569301`: download all cards in pack 569301 (json only)
+- `vega pull cards 569302 --with-images`: download all cards in pack 569302 along with all images
+
+See more commands with `vega help`
 
 ## Helper Scripts
 
-You can use the example scripts that directly use the `vegapull` CLI to download data for all existing packs:
+If the out-of-the box **vega** command is not enough for your use case, then you can use helper scripts to further refine and automate the data download.
+
+Previously, vega did not natively support parallel downloads and the interactive mode was ugly.
+As a result, it was encouraged to make helper scripts that would call the vega cli and provide a friendier UX.
+
+But since [v1.0.0](https://crates.io/crates/vegapull/1.0.0), vega now supports all of this natively so I would recommend against using helper scripts unless you really know what you are doing.
+
+> [!WARNING]
+> The helper scripts were made to work with older version and it's likely the 1.0.0 release has totally broken them.
+> I did not have time/motivation to update them but feel free to do so if that is something you care about.
+> They are in the [scripts](./scripts) sub-directory.
 
 ### Bash
+
 ```console
-coko7@example:~$ bash scripts/pull-all.sh
+// ⚠️ broken in v1.0.0, fix it yourself or use an older version of vega
+$ bash scripts/pull-all.sh
 // the `gum` one is more complete but requires some additional tooling to install in your shell:
-coko7@example:~$ bash scripts/pull-all-gum.sh
+$ bash scripts/pull-all-gum.sh
 ```
 
 ### Go
@@ -82,63 +83,19 @@ coko7@example:~$ bash scripts/pull-all-gum.sh
 > Requires [Go](https://go.dev/) to be installed.
 
 ```console
-➜ go run scripts/pull.go
+// ⚠️ broken in v1.0.0, fix it yourself or use an older version of vega
+$ go run scripts/pull.go
 ```
 
 ### Python
 
 You can find a Python helper script on this repository: https://github.com/buhbbl/punk-records
 
-## 🃏 Supported card fields
+## Where can I find prefetched datasets?
 
-```rust
-#[derive(Debug, Deserialize, Serialize)]
-pub struct Card {
-    pub id: String,
-    pub name: String,
-    pub rarity: CardRarity,
-    pub category: CardCategory,
-    // pub number: i32,
-    // #[serde(skip_serializing)]
-    // pub set_id: String,
-    // pub copyright: String,
+> [!WARNING]
+> Keep in mind that data downloaded by **vega** is copyrighted data (see copyright notice at the top of this file).
 
-    // Images
-    pub img_url: String,
-    // pub illustration: CardIllustration,
-    // pub illustrator_name: String,
-
-    // Gameplay
-    pub colors: Vec<CardColor>,
-    pub cost: Option<i32>, // Only Character, Event and Stage (called life for Leader)
-    pub attributes: Vec<CardAttribute>, // Only Leader and Character
-    pub power: Option<i32>, // Only Leader and Character
-    pub counter: Option<i32>, // Only Character
-
-    pub types: Vec<String>,
-    pub effect: String,
-    pub trigger: Option<String>,
-    // pub notes: String,
-}
-```
-Fields have been named following the terms used in the official [rule book](https://en.onepiece-cardgame.com/pdf/rule_comprehensive.pdf)
-
-## 🐛 Issues
-
-When using `jp` locale to fetch data, the scraper will likely fail when handling `counter` or `colors` values for some cards.
-
-## 🗺️ Road Map
-
-- [x] Fetch card sets data
-- [x] Better error handling
-- [x] Fetch cards data for each card set (wip)
-- [x] Get card data for all card sets
-- [x] Organize and save cards data as JSON to files
-- [x] Add logs
-- [x] Support more card fields
-- [x] Download card images as well
-- [x] Make it locale-agnostic to be able to download data from Japanese and other versions
-    - [ ] Handle problems with the `jp` version (inconsistent cards data on official site)
-- [ ] Better configuration 
-- [x] User friendly CLI
-- [ ] Add tests
+There are currently two Git repositories with JSON data:
+- [buhbbl/punk-records](https://github.com/buhbbl/punk-records) (all languages)
+- [Coko7/vegapull-records](https://github.com/Coko7/vegapull-records) (english/japanese only)

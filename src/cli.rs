@@ -1,12 +1,17 @@
-use std::{ffi::OsString, path::PathBuf, str::FromStr};
-
 use anyhow::Result;
 use clap::{command, Parser, Subcommand, ValueEnum};
+use inquire_derive::Selectable;
+use std::{
+    ffi::OsString,
+    fmt::{self},
+    path::PathBuf,
+    str::FromStr,
+};
 
 #[derive(Debug, Parser)]
-#[command(name = "vegapull")]
 #[command(
-    about = "Dynamically fetch data for the One Piece TCG from official sites.",
+    name = "vega",
+    about = "Scrape cards data from the official One Piece TCG website",
     long_about = None
 )]
 #[command(version)]
@@ -14,95 +19,104 @@ pub struct Cli {
     #[command(subcommand)]
     pub command: Commands,
 
-    /// Language to use for the data
-    #[arg(short, long, alias = "lang", value_name = "LANGUAGE", default_value_t = LanguageCode::English, value_enum)]
-    pub language: LanguageCode,
-
-    /// Specify path to the config directory (where locales are stored)
-    #[arg(short = 'c', long = "config-dir")]
-    pub config_directory_path: Option<PathBuf>,
-
     #[command(flatten)]
     pub verbose: clap_verbosity_flag::Verbosity,
 }
 
 #[derive(Debug, Subcommand)]
-pub enum Commands {
-    /// Get the list of all existing packs
-    #[command(name = "pack", alias = "pak")]
-    Packs {
-        /// Save output directly to <OUTPUT_FILE>
-        #[arg(short, long = "out")]
-        output_file: Option<PathBuf>,
-    },
-    /// Compare datasets
-    #[command(name = "diff", alias = "df")]
-    Diff {
-        /// Output differences between two packs.json files
-        #[arg(short, long = "packs", num_args = 2, value_names = ["FILE1", "FILE2"])]
-        pack_files: Option<Vec<PathBuf>>,
-    },
-    /// Get all cards within the given pack
-    #[command(name = "card", alias = "car")]
+pub enum PullSubCommands {
+    /// Download the complete dataset for a given language
+    #[command(name = "all", alias = "records")]
+    All,
+    /// Download the list of existing packs
+    #[command(name = "packs", alias = "pack")]
+    Packs,
+    /// Download all cards for a given pack
+    #[command(name = "cards", alias = "card")]
     Cards {
         /// ID of the pack
         pack_id: OsString,
 
-        /// Save output directly to <OUTPUT_FILE>
-        #[arg(short, long = "out")]
-        output_file: Option<PathBuf>,
+        /// Download card images as well
+        #[arg(short = 'a', long = "with-images")]
+        with_images: bool,
     },
-    /// Download all card images for a given pack
-    #[command(name = "image", alias = "img")]
-    Images {
-        /// ID of the pack
-        pack_id: OsString,
-
-        /// Directory where the images should be saved
-        #[arg(short, long = "output-dir")]
-        output_dir: PathBuf,
-    },
-    /// Launch into interactive mode
-    #[command(name = "inter", alias = "interactive", alias = "int")]
-    Interactive,
-    /// Test what configuration files are found
-    #[command(name = "test-config", alias = "test-conf")]
-    TestConfig,
 }
 
-#[derive(ValueEnum, Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Debug, Subcommand)]
+pub enum Commands {
+    /// Download datasets from the official site
+    #[command(name = "pull", alias = "p", alias = "fetch", alias = "punk")]
+    Pull {
+        #[command(subcommand)]
+        command: PullSubCommands,
+
+        /// Dataset to use (card descriptions and images will vary)
+        #[arg(short, long, alias = "lang", value_name = "LANGUAGE", default_value_t = LanguageCode::English, value_enum)]
+        language: LanguageCode,
+
+        /// Save downloaded data to <DIR>
+        #[arg(short, long = "output", value_name = "PATH")]
+        output_dir: Option<PathBuf>,
+
+        /// Path to the config directory (where locales are stored)
+        #[arg(short = 'c', long = "config-dir")]
+        config_path: Option<PathBuf>,
+
+        /// Send User-Agent <NAME> to server
+        #[arg(short = 'A', long = "user-agent", value_name = "NAME")]
+        user_agent: Option<String>,
+    },
+    /// Compare datasets
+    // #[command(name = "diff", alias = "df")]
+    // Diff {
+    //     /// Output differences between two packs.json files
+    //     #[arg(short, long = "packs", num_args = 2, value_names = ["FILE1", "FILE2"])]
+    //     pack_files: Option<Vec<PathBuf>>,
+    // },
+    /// Output current configuration
+    #[command(name = "config", alias = "conf")]
+    Config,
+}
+
+#[derive(ValueEnum, Copy, Clone, Debug, PartialEq, Eq, Selectable)]
 pub enum LanguageCode {
+    #[value(name = "english", alias = "en")]
+    English,
+    #[value(name = "japanese", alias = "jp")]
+    Japanese,
+    #[value(name = "french", alias = "fr")]
+    French,
     #[value(name = "chinese-hongkong", alias = "zh_hk", alias = "zh_HK")]
     ChineseHongKong,
     #[value(name = "chinese-simplified", alias = "zh_cn", alias = "zh_CN")]
     ChineseSimplified,
     #[value(name = "chinese-taiwan", alias = "zh_tw", alias = "zh_TW")]
     ChineseTaiwan,
-    #[value(name = "english", alias = "en")]
-    English,
     #[value(name = "english-asia", alias = "en-asia")]
     EnglishAsia,
-    #[value(name = "japanese", alias = "jp")]
-    Japanese,
     #[value(name = "thai", alias = "th")]
     Thai,
-    #[value(name = "french", alias = "fr")]
-    French,
+}
+
+impl fmt::Display for LanguageCode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            LanguageCode::ChineseHongKong => write!(f, "chinese-hong-kong"),
+            LanguageCode::ChineseSimplified => write!(f, "chinese-simplified"),
+            LanguageCode::ChineseTaiwan => write!(f, "chinese-taiwan"),
+            LanguageCode::English => write!(f, "english"),
+            LanguageCode::EnglishAsia => write!(f, "english-asia"),
+            LanguageCode::Japanese => write!(f, "japanese"),
+            LanguageCode::Thai => write!(f, "thai"),
+            LanguageCode::French => write!(f, "french"),
+        }
+    }
 }
 
 impl LanguageCode {
     pub fn to_path(self) -> PathBuf {
-        let path = match self {
-            LanguageCode::ChineseHongKong => "chinese-hong-kong",
-            LanguageCode::ChineseSimplified => "chinese-simplified",
-            LanguageCode::ChineseTaiwan => "chinese-taiwan",
-            LanguageCode::English => "english",
-            LanguageCode::EnglishAsia => "english-asia",
-            LanguageCode::Japanese => "japanese",
-            LanguageCode::Thai => "thai",
-            LanguageCode::French => "french",
-        };
-
+        let path = self.to_string();
         PathBuf::from(path)
     }
 }
