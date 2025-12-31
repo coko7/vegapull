@@ -3,7 +3,7 @@ use log::{debug, info};
 use rayon::prelude::*;
 use scraper::Html;
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     thread,
     time::{Duration, Instant},
 };
@@ -11,7 +11,7 @@ use std::{
 use crate::{
     card::{Card, CardScraper},
     localizer::Localizer,
-    pack::Pack,
+    pack::{Pack, PackId},
 };
 
 pub struct OpTcgScraper {
@@ -53,7 +53,7 @@ impl OpTcgScraper {
         full_url
     }
 
-    pub fn fetch_packs(&self) -> Result<Vec<Pack>> {
+    pub fn fetch_packs(&self) -> Result<HashMap<PackId, Pack>> {
         let url = self.cardlist_endpoint();
         debug!("GET `{}`", url);
 
@@ -74,12 +74,12 @@ impl OpTcgScraper {
 
         let series_selector = scraper::Selector::parse(sel).unwrap();
 
-        let mut packs = Vec::new();
+        let mut packs = HashMap::new();
         for element in document.select(&series_selector) {
             match Pack::new(element) {
                 Ok(pack) => {
                     if !pack.id.is_empty() {
-                        packs.push(pack);
+                        packs.insert(pack.id.clone(), pack);
                     }
                 }
                 Err(e) => bail!("failed to scrape data about packs: {}", e),
@@ -94,12 +94,12 @@ impl OpTcgScraper {
 
     pub fn fetch_all_cards(
         &self,
-        pack_ids: &[&str],
+        pack_ids: &HashSet<PackId>,
         report_progress: bool,
     ) -> Result<HashMap<String, Vec<Card>>> {
         pack_ids
             .par_iter()
-            .map(|&pid| {
+            .map(|pid| {
                 info!("fetching all cards for pack {} via rayon", pid);
                 let pack_id = pid.to_string();
                 self.fetch_cards(&pack_id).map(|cards| {

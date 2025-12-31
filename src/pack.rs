@@ -7,6 +7,8 @@ use std::{
     hash::{Hash, Hasher},
 };
 
+pub type PackId = String;
+
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Pack {
     pub id: String,

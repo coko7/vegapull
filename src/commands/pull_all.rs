@@ -2,11 +2,21 @@ use anyhow::{bail, Result};
 use inquire::{Confirm, Text};
 use log::{debug, info};
 use rayon::prelude::*;
-use std::{collections::HashMap, fs, path::PathBuf, time::Instant};
+use std::{
+    collections::{HashMap, HashSet},
+    fs,
+    path::PathBuf,
+    time::SystemTime,
+};
 use yansi::Paint;
 
 use crate::{
-    card::Card, cli::LanguageCode, localizer::Localizer, scraper::OpTcgScraper, storage::DataStore,
+    card::Card,
+    cli::LanguageCode,
+    localizer::Localizer,
+    pack::PackId,
+    scraper::OpTcgScraper,
+    storage::{DataStore, PullMode, VegaMetaStats},
     utils,
 };
 
@@ -110,14 +120,14 @@ fn pull_all_interactive(config_path: Option<PathBuf>, user_agent: Option<String>
 
     eprintln!("Fetching list of packs...");
 
-    let start = Instant::now();
+    let start = SystemTime::now();
 
     let packs = scraper.fetch_packs()?;
     store.write_packs(&packs)?;
 
     eprintln!("Found {} packs!\n", packs.len());
 
-    let pack_ids = packs.iter().map(|p| p.id.as_str()).collect::<Vec<_>>();
+    let pack_ids: HashSet<PackId> = packs.keys().cloned().collect();
 
     eprintln!("Now fetching all the cards for each pack...");
     let all_cards = scraper.fetch_all_cards(&pack_ids, true)?;
@@ -153,30 +163,22 @@ fn pull_all_interactive(config_path: Option<PathBuf>, user_agent: Option<String>
         });
     }
 
-    let duration = start.elapsed();
+    let duration = start.elapsed()?;
 
     eprintln!(
         "\nFinal data is available in: {}",
         inputs.data_dir.display()
     );
-    eprintln!("Full download completed after: {:?}", duration);
+    eprintln!("Full download took: {:?}", duration);
+
+    store.write_vega_stats(VegaMetaStats::new(
+        inputs.language,
+        start.into(),
+        duration.as_millis().try_into()?,
+        inputs.download_images,
+        PullMode::All,
+        pack_ids,
+    ))?;
+
     Ok(())
 }
-
-// fn download_images(scraper: &OpTcgScraper, cards: &HashMap<String, Card>) -> Result<()> {
-//     let card_values = cards.values().collect::<Vec<_>>();
-//     let images = scraper.fetch_all_card_images(&cards)?;
-//
-//     images.par_iter().for_each(|(card_id, image_data)| {
-//         let card = cards_by_id
-//             .get(card_id)
-//             .unwrap_or_else(|| panic!("card should exist: {card_id}"));
-//
-//         store
-//             .write_image(card, image_data.to_vec())
-//             .unwrap_or_else(|_| panic!("write_image failed for: {card_id}"));
-//         debug!("wrote image_data for: {}", card_id);
-//     });
-//
-//     Ok(())
-// }

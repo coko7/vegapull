@@ -1,44 +1,90 @@
 use anyhow::{bail, Context, Result};
+use chrono::{DateTime, Local};
 use log::{debug, info, trace};
+use serde::Serialize;
 use std::{
+    collections::{HashMap, HashSet},
     fs,
     io::Write,
     path::{Path, PathBuf},
 };
 
-use crate::{card::Card, cli::LanguageCode, pack::Pack};
+use crate::{
+    card::Card,
+    cli::LanguageCode,
+    pack::{Pack, PackId},
+};
+
+const VEGA_META_FILE: &str = "vega.meta.toml";
 
 pub struct DataStore {
     root_dir: PathBuf,
-    locale: LanguageCode,
+    language: LanguageCode,
+}
+
+#[derive(Debug, Serialize)]
+pub enum PullMode {
+    All,
+    PackListOnly,
+    SinglePack,
+}
+
+#[derive(Debug, Serialize)]
+pub struct VegaMetaStats {
+    language: LanguageCode,
+    pull_start: DateTime<Local>,
+    pull_duration_ms: usize,
+    images_included: bool,
+    mode: PullMode,
+    packs: HashSet<PackId>,
+}
+
+impl VegaMetaStats {
+    pub fn new(
+        language: LanguageCode,
+        pull_start: DateTime<Local>,
+        pull_duration_ms: usize,
+        images_included: bool,
+        mode: PullMode,
+        packs: HashSet<PackId>,
+    ) -> Self {
+        Self {
+            language,
+            pull_start,
+            pull_duration_ms,
+            images_included,
+            mode,
+            packs,
+        }
+    }
 }
 
 pub enum StoreLocation<'a> {
     RootDir,
-    LocaleDir,
+    VegaMetaFile,
+    PacksListFile,
     ImagesDir,
     JsonDir,
-    PacksListFile,
     CardsFile(&'a str),
     ImageFile(&'a Card),
 }
 
 impl DataStore {
-    pub fn new(root_dir: &Path, locale: LanguageCode) -> Self {
-        DataStore {
+    pub fn new(root_dir: &Path, language: LanguageCode) -> Self {
+        Self {
             root_dir: root_dir.to_path_buf(),
-            locale,
+            language,
         }
     }
 
     pub fn get_path(&self, location: StoreLocation) -> Result<PathBuf> {
         let path = match location {
             StoreLocation::RootDir => self.root_dir.clone(),
-            StoreLocation::LocaleDir => self
-                .get_path(StoreLocation::RootDir)?
-                .join(self.locale.to_path()),
-            StoreLocation::ImagesDir => self.get_path(StoreLocation::LocaleDir)?.join("images/"),
-            StoreLocation::JsonDir => self.get_path(StoreLocation::LocaleDir)?.join("json/"),
+            StoreLocation::VegaMetaFile => {
+                self.get_path(StoreLocation::RootDir)?.join(VEGA_META_FILE)
+            }
+            StoreLocation::ImagesDir => self.get_path(StoreLocation::RootDir)?.join("images/"),
+            StoreLocation::JsonDir => self.get_path(StoreLocation::RootDir)?.join("json/"),
             StoreLocation::PacksListFile => {
                 self.get_path(StoreLocation::JsonDir)?.join("packs.json")
             }
@@ -86,7 +132,7 @@ impl DataStore {
         Ok(())
     }
 
-    pub fn write_packs(&self, packs: &Vec<Pack>) -> Result<()> {
+    pub fn write_packs(&self, packs: &HashMap<PackId, Pack>) -> Result<()> {
         self.ensure_created(StoreLocation::JsonDir)?;
 
         let path = self.get_path(StoreLocation::PacksListFile)?;
@@ -144,20 +190,13 @@ impl DataStore {
         Self::write_image_to_file(img_data, &path)?;
         Ok(())
     }
-}
 
-// pub fn load_data() -> Result<OnePieceTcgData> {
-//     let path = data_file_path();
-//     info!("load data from: {}", path.to_string_lossy());
-//
-//     let json = fs::read_to_string(path)?;
-//     let data: OnePieceTcgData = serde_json::from_str(&json)?;
-//     trace!("deserialize data: `{} -> {:?}`", json, data);
-//     debug!(
-//         "loaded {} card sets ({} cards)",
-//         data.card_sets.len(),
-//         data.total_cards()
-//     );
-//
-//     Ok(data)
-// }
+    pub fn write_vega_stats(&self, stats: VegaMetaStats) -> Result<()> {
+        let path = self.get_path(StoreLocation::VegaMetaFile)?;
+        let toml = toml::to_string_pretty(&stats)?;
+
+        fs::write(&path, toml)?;
+        debug!("wrote vega stats to: {} {:#?}", path.display(), stats);
+        Ok(())
+    }
+}

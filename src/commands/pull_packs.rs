@@ -1,9 +1,14 @@
 use anyhow::Result;
 use log::debug;
-use std::{path::Path, time::Instant};
+use std::{collections::HashSet, path::Path, time::SystemTime};
 
 use crate::{
-    cli::LanguageCode, localizer::Localizer, scraper::OpTcgScraper, storage::DataStore, utils,
+    cli::LanguageCode,
+    localizer::Localizer,
+    pack::PackId,
+    scraper::OpTcgScraper,
+    storage::{DataStore, PullMode, VegaMetaStats},
+    utils,
 };
 
 pub fn pull_packs(
@@ -19,9 +24,10 @@ pub fn pull_packs(
     let store = DataStore::new(output_dir, language);
 
     eprintln!("fetching list of packs...");
-    let start = Instant::now();
+    let start = SystemTime::now();
 
     let packs = scraper.fetch_packs()?;
+    let pack_ids: HashSet<PackId> = packs.keys().cloned().collect();
     store.write_packs(&packs)?;
 
     println!(
@@ -30,8 +36,18 @@ pub fn pull_packs(
         output_dir.display()
     );
 
-    let duration = start.elapsed();
+    let duration = start.elapsed()?;
 
     debug!("pull_packs took: {:?}", duration);
+
+    store.write_vega_stats(VegaMetaStats::new(
+        language,
+        start.into(),
+        duration.as_millis().try_into()?,
+        false,
+        PullMode::PackListOnly,
+        pack_ids,
+    ))?;
+
     Ok(())
 }

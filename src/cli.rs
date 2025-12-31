@@ -1,6 +1,7 @@
 use anyhow::Result;
 use clap::{command, Parser, Subcommand, ValueEnum};
 use inquire_derive::Selectable;
+use serde::{Deserialize, Serialize};
 use std::{
     ffi::OsString,
     fmt::{self},
@@ -79,7 +80,7 @@ pub enum Commands {
     Config,
 }
 
-#[derive(ValueEnum, Copy, Clone, Debug, PartialEq, Eq, Selectable)]
+#[derive(ValueEnum, Copy, Clone, Debug, PartialEq, Eq, Selectable, Serialize, Deserialize)]
 pub enum LanguageCode {
     #[value(name = "english", alias = "en")]
     English,
