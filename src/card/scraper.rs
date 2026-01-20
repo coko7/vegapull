@@ -28,6 +28,7 @@ impl CardScraper {
 
         let id = Self::fetch_id(dl_elem)?;
         let pack_id = pack_id.to_string();
+
         let name = Self::fetch_name(dl_elem)?;
         let rarity = Self::fetch_rarity(localizer, dl_elem)?;
         let category = Self::fetch_category(localizer, dl_elem)?;
@@ -39,6 +40,7 @@ impl CardScraper {
         let attributes = Self::fetch_attributes(localizer, dl_elem)?;
         let power = Self::fetch_power(dl_elem)?;
         let counter = Self::fetch_counter(dl_elem)?;
+        let block_number = Self::fetch_block_number(dl_elem)?;
         let types = Self::fetch_types(dl_elem)?;
         let effect = Self::fetch_effect(dl_elem)?;
         let trigger = Self::fetch_trigger(dl_elem)?;
@@ -56,6 +58,7 @@ impl CardScraper {
             attributes,
             power,
             counter,
+            block_number,
             types,
             effect,
             trigger,
@@ -308,6 +311,38 @@ impl CardScraper {
             Err(e) => bail!(
                 "failed to parse card.counter value `{}`: {}",
                 raw_counter,
+                e
+            ),
+        }
+    }
+
+    pub fn fetch_block_number(element: ElementRef) -> Result<i32> {
+        let sel = "dd>div.backCol>div.col2>div.block";
+        trace!("fetching card.block_number ({})...", sel);
+
+        let raw_block_number = Self::get_child_node(element, sel.to_string())?.inner_html();
+        let raw_block_number = Self::strip_html_tags(&raw_block_number)?;
+        let raw_block_number = normalize_ascii(&raw_block_number).trim().to_string();
+        trace!("fetched card.block_number: {}", raw_block_number);
+
+        // Sanity check
+        let digits: String = raw_block_number
+            .chars()
+            .filter(|c| c.is_ascii_digit())
+            .collect();
+        if digits.is_empty() {
+            trace!("card.block_number has no digits");
+            bail!("card.block_number is empty!");
+        }
+
+        match digits.parse::<i32>() {
+            Ok(val) => {
+                trace!("processed card.block_number");
+                Ok(val)
+            }
+            Err(e) => bail!(
+                "failed to parse card.block_number value `{}`: {}",
+                raw_block_number,
                 e
             ),
         }

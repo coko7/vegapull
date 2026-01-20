@@ -22,11 +22,12 @@ pub struct Card {
     // pub illustrator_name: String,
 
     // Gameplay
-    pub colors: Vec<CardColor>,
-    pub cost: Option<i32>, // Only Character, Event and Stage (called life for Leader)
+    pub cost: Option<i32>, // Only Character, Event, and Stage (called life for Leader)
     pub attributes: Vec<CardAttribute>, // Only Leader and Character
     pub power: Option<i32>, // Only Leader and Character
     pub counter: Option<i32>, // Only Character
+    pub colors: Vec<CardColor>,
+    pub block_number: i32,
 
     pub types: Vec<String>,
     pub effect: String,
