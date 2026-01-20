@@ -26,8 +26,6 @@ It goes directly goes against the [onepiece-cardgame.com](https://en.onepiece-ca
 > * **Data** downloaded using this tool is copyrighted by ©Eiichiro Oda/Shueisha, Toei Animation, Bandai Namco Entertainment Inc.
 > * **Source code** for this tool is available under the GNU General Public License 3.0 or later. See [LICENSE](LICENSE) for more details.
 
-## News
-
 ## Installation
 
 The easiest way to install is through [crates.io](https://crates.io/crates/vegapull):
