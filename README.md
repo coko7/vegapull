@@ -1,10 +1,14 @@
 # 👒 vega (pull)
 
-![build](https://github.com/coko7/vegapull/actions/workflows/rust.yml/badge.svg)
-
 A CLI utility to retrieve data for the One Piece Trading Cards Game (TCG).
 
 It goes directly goes against the [onepiece-cardgame.com](https://en.onepiece-cardgame.com) website and attempts to scrap information such as packs, cards and images.
+
+[![Crates info](https://img.shields.io/crates/v/vegapull.svg)](https://crates.io/crates/vegapull)
+[![License: GPL-3.0](https://img.shields.io/github/license/coko7/vegapull?color=blue)](LICENSE)
+[![Number of Stars](https://img.shields.io/github/stars/coko7/vegapull.svg?style=flat&logo=github&colorB=green&label=stars)](https://github.com/coko7/vegapull/stargazers)
+![Rust](https://img.shields.io/github/languages/top/coko7/vegapull?color=orange)
+[![Tests](https://github.com/coko7/vegapull/actions/workflows/rust.yml/badge.svg)](https://github.com/coko7/vegapull/actions/workflows/rust.yml)
 
 > [!IMPORTANT]
 > ✨ [v1.0.0](https://crates.io/crates/vegapull/1.0.0) is out now! The entire tool has been reworked to be user-friendly and ***blazingly fast 🚀***
