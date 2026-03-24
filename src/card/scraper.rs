@@ -183,7 +183,7 @@ impl CardScraper {
             .to_string();
         trace!("fetched card.cost: {}", raw_cost);
 
-        if raw_cost == "-" {
+        if raw_cost == "-" || raw_cost.is_empty() {
             trace!("card.cost unset");
             return Ok(None);
         }
@@ -316,7 +316,7 @@ impl CardScraper {
         }
     }
 
-    pub fn fetch_block_number(element: ElementRef) -> Result<i32> {
+    pub fn fetch_block_number(element: ElementRef) -> Result<Option<i32>> {
         let sel = "dd>div.backCol>div.col2>div.block";
         trace!("fetching card.block_number ({})...", sel);
 
@@ -325,20 +325,24 @@ impl CardScraper {
         let raw_block_number = normalize_ascii(&raw_block_number).trim().to_string();
         trace!("fetched card.block_number: {}", raw_block_number);
 
-        // Sanity check
+        if raw_block_number == "-" || raw_block_number.is_empty() {
+            trace!("card.block_number unset");
+            return Ok(None);
+        }
+
         let digits: String = raw_block_number
             .chars()
             .filter(|c| c.is_ascii_digit())
             .collect();
         if digits.is_empty() {
             trace!("card.block_number has no digits");
-            bail!("card.block_number is empty!");
+            return Ok(None);
         }
 
         match digits.parse::<i32>() {
             Ok(val) => {
                 trace!("processed card.block_number");
-                Ok(val)
+                Ok(Some(val))
             }
             Err(e) => bail!(
                 "failed to parse card.block_number value `{}`: {}",

@@ -1,5 +1,5 @@
 use anyhow::{bail, Context, Result};
-use log::{debug, info};
+use log::{debug, error, info};
 use rayon::prelude::*;
 use scraper::Html;
 use std::{
@@ -166,7 +166,10 @@ impl OpTcgScraper {
                     cards.push(card);
                 }
                 Err(e) => {
-                    bail!("failed to scrape data about card `{}`: {}", &card_id, e)
+                    error!(
+                        "failed to scrape data about card `{}`: {}. The card will be skipped...",
+                        &card_id, e
+                    )
                 }
             };
         }
