@@ -183,7 +183,7 @@ impl CardScraper {
             .to_string();
         trace!("fetched card.cost: {}", raw_cost);
 
-        if raw_cost == "-" {
+        if raw_cost == "-" || raw_cost.is_empty() {
             trace!("card.cost unset");
             return Ok(None);
         }
