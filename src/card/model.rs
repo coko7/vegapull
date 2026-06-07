@@ -27,7 +27,7 @@ pub struct Card {
     pub power: Option<i32>, // Only Leader and Character
     pub counter: Option<i32>, // Only Character
     pub colors: Vec<CardColor>,
-    pub block_number: i32,
+    pub block_number: Option<i32>,
 
     pub types: Vec<String>,
     pub effect: String,
