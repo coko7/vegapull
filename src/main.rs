@@ -46,8 +46,8 @@ fn process_args(args: Cli) -> Result<()> {
             config_path,
             user_agent,
         } => match command {
-            cli::PullSubCommands::All => {
-                commands::pull_all(language, output_dir, config_path, user_agent)
+            cli::PullSubCommands::All { with_images } => {
+                commands::pull_all(language, output_dir, with_images, config_path, user_agent)
             }
             cli::PullSubCommands::Packs => {
                 commands::pull_packs(language, output_dir.as_deref(), user_agent)

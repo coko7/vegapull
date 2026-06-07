@@ -103,16 +103,29 @@ fn handle_existing_dir(data_dir: &PathBuf) -> Result<()> {
 pub fn pull_all(
     language: LanguageCode,
     output_dir: Option<PathBuf>,
-    config_path: Option<PathBuf>,
+    with_images: bool,
+    _config_path: Option<PathBuf>,
     user_agent: Option<String>,
 ) -> Result<()> {
-    pull_all_interactive(config_path, user_agent)
-}
-
-fn pull_all_interactive(config_path: Option<PathBuf>, user_agent: Option<String>) -> Result<()> {
     print_banner();
 
-    let inputs = get_inputs_from_user()?;
+    // Non-interactive when an output dir is supplied (-o): take the language
+    // and image choice from CLI flags and skip every prompt. Otherwise fall
+    // back to the interactive prompts.
+    let inputs = match output_dir {
+        Some(data_dir) => {
+            if data_dir.exists() {
+                fs::remove_dir_all(&data_dir)?;
+                eprintln!("Cleared existing directory: {}", data_dir.display());
+            }
+            InteractiveInputs {
+                language,
+                data_dir,
+                download_images: with_images,
+            }
+        }
+        None => get_inputs_from_user()?,
+    };
 
     let localizer = Localizer::load(inputs.language)?;
     let scraper = OpTcgScraper::new(localizer, user_agent);

@@ -28,7 +28,11 @@ pub struct Cli {
 pub enum PullSubCommands {
     /// Download the complete dataset for a given language
     #[command(name = "all", alias = "records")]
-    All,
+    All {
+        /// Download card images as well
+        #[arg(short = 'a', long = "with-images")]
+        with_images: bool,
+    },
     /// Download the list of existing packs
     #[command(name = "packs", alias = "pack")]
     Packs,
