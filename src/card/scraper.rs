@@ -1,5 +1,6 @@
 use anyhow::{bail, Context, Result};
-use log::trace;
+use log::{error, trace};
+use once_cell::sync::Lazy;
 use regex::Regex;
 use scraper::{ElementRef, Html};
 use unicode_normalization::UnicodeNormalization;
@@ -13,6 +14,9 @@ fn normalize_ascii(s: &str) -> String {
     // NFKC converts full-width digits/letters to ASCII equivalents
     s.nfkc().collect::<String>()
 }
+
+static FIRST_H3: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"(?is)^\s*<h3\b[^>]*>.*?</h3>\s*").unwrap());
 
 pub struct CardScraper {}
 
@@ -371,10 +375,10 @@ impl CardScraper {
         trace!("fetching card.effect ({})...", sel);
 
         let effect = Self::get_child_node(element, sel.to_string())?.inner_html();
-        let effect = Self::strip_html_tags(&effect)?;
-        trace!("fetched card.effect: {}", effect);
+        let effect_new = Self::strip_html_tags(&effect)?;
+        trace!("fetched card.effect: {}", effect_new);
 
-        Ok(effect)
+        Ok(effect_new)
     }
 
     pub fn fetch_trigger(element: ElementRef) -> Result<Option<String>> {
@@ -394,9 +398,12 @@ impl CardScraper {
     }
 
     fn strip_html_tags(value: &str) -> Result<String> {
-        let reg = Regex::new(r"<[^>]*>.*?</[^>]*>")?;
-        let result = reg.replace_all(value, "").trim().to_string();
-        Ok(result)
+        let html = FIRST_H3.replace(value, "");
+        let document = Html::parse_fragment(&html);
+
+        let text = document.root_element().text().collect::<Vec<_>>().join(" ");
+        let text = text.split_whitespace().collect::<Vec<_>>().join(" ");
+        Ok(text)
     }
 
     fn get_child_node(element: ElementRef, selector: String) -> Result<ElementRef> {
@@ -415,5 +422,83 @@ impl CardScraper {
         let dl_sel = scraper::Selector::parse(&dl_sel).unwrap();
         let dl_elem = document.select(&dl_sel).next().unwrap();
         Ok(dl_elem)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn strip_html_tags_with_html_should_keep_content() -> Result<()> {
+        let raw_html = "<h3>Effect</h3>If your Leader has the <slash> attribute, this Character gains [Rush: Character].<br>(This card can attack Characters on the turn in which it is played.)<br>[On Play] Rest up to 2 of your opponent's Characters with a cost of 2 or less.</slash>";
+
+        let expected = "If your Leader has the attribute, this Character gains [Rush: Character]. (This card can attack Characters on the turn in which it is played.) [On Play] Rest up to 2 of your opponent's Characters with a cost of 2 or less.";
+        let actual = CardScraper::strip_html_tags(raw_html)?;
+
+        assert_eq!(expected, actual);
+        Ok(())
+    }
+
+    #[test]
+    fn strip_html_tags_with_empty_input_should_return_empty() -> Result<()> {
+        let actual = CardScraper::strip_html_tags("")?;
+        assert_eq!("", actual);
+        Ok(())
+    }
+
+    #[test]
+    fn strip_html_tags_without_h3_should_keep_all_text() -> Result<()> {
+        let raw_html = "Just plain text with <br> a break.";
+        let expected = "Just plain text with a break.";
+        let actual = CardScraper::strip_html_tags(raw_html)?;
+        assert_eq!(expected, actual);
+        Ok(())
+    }
+
+    #[test]
+    fn strip_html_tags_with_h3_attributes_should_still_strip_h3() -> Result<()> {
+        let raw_html = "<h3 class=\"foo\">Effect</h3>Some text.";
+        let expected = "Some text.";
+        let actual = CardScraper::strip_html_tags(raw_html)?;
+        assert_eq!(expected, actual);
+        Ok(())
+    }
+
+    #[test]
+    fn strip_html_tags_with_self_closing_attribute_tag_should_keep_content() -> Result<()> {
+        let raw_html = "If your Leader has the <slash/> attribute, gains [Rush].";
+        let expected = "If your Leader has the attribute, gains [Rush].";
+        let actual = CardScraper::strip_html_tags(raw_html)?;
+        assert_eq!(expected, actual);
+        Ok(())
+    }
+
+    #[test]
+    fn strip_html_tags_with_html_entities_should_decode_them() -> Result<()> {
+        let raw_html = "Draw 1 card &amp; discard 1. Cost &lt; 5.";
+        let expected = "Draw 1 card & discard 1. Cost < 5.";
+        let actual = CardScraper::strip_html_tags(raw_html)?;
+        assert_eq!(expected, actual);
+        Ok(())
+    }
+
+    #[test]
+    fn strip_html_tags_with_overlapping_tags_should_keep_all_text() -> Result<()> {
+        let raw_html =
+            "If your Leader has the <slash>attribute<strike>and more</slash>tail</strike>.";
+        let expected = "If your Leader has the attribute and more tail .";
+        let actual = CardScraper::strip_html_tags(raw_html)?;
+        assert_eq!(expected, actual);
+        Ok(())
+    }
+
+    #[test]
+    fn strip_html_tags_with_nested_same_attribute_tag_should_keep_all_text() -> Result<()> {
+        let raw_html = "If your Leader has the <slash>inner <slash>double</slash> nested</slash>.";
+        let expected = "If your Leader has the inner double nested .";
+        let actual = CardScraper::strip_html_tags(raw_html)?;
+        assert_eq!(expected, actual);
+        Ok(())
     }
 }
