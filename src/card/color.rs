@@ -19,7 +19,7 @@ impl CardColor {
 
         for candidate in Self::parse_candidates(value) {
             if let Some(key) = localizer.match_color(candidate) {
-                return Ok(Self::from_str(&key)?);
+                return Self::from_str(&key);
             }
 
             if let Some((key, _)) = localizer
@@ -27,7 +27,7 @@ impl CardColor {
                 .iter()
                 .find(|(_, color)| color.eq_ignore_ascii_case(candidate))
             {
-                return Ok(Self::from_str(key)?);
+                return Self::from_str(key);
             }
         }
 

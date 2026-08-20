@@ -433,16 +433,21 @@ impl CardScraper {
     }
 
     fn attribute_placeholder(attribute: &CardAttribute) -> String {
-        format!("__VEGAPULL_ATTRIBUTE_{}__", attribute.html_tag_name().to_uppercase())
+        format!(
+            "__VEGAPULL_ATTRIBUTE_{}__",
+            attribute.html_tag_name().to_uppercase()
+        )
     }
 
     fn restore_attribute_placeholders(value: &str) -> String {
-        CardAttribute::all().iter().fold(value.to_string(), |text, attribute| {
-            text.replace(
-                &Self::attribute_placeholder(attribute),
-                attribute.effect_text(),
-            )
-        })
+        CardAttribute::all()
+            .iter()
+            .fold(value.to_string(), |text, attribute| {
+                text.replace(
+                    &Self::attribute_placeholder(attribute),
+                    attribute.effect_text(),
+                )
+            })
     }
 
     fn get_child_node(element: ElementRef, selector: String) -> Result<ElementRef> {
@@ -542,8 +547,8 @@ mod tests {
     }
 
     #[test]
-    fn strip_html_tags_with_attribute_tag_in_effect_should_preserve_canonical_attribute() -> Result<()>
-    {
+    fn strip_html_tags_with_attribute_tag_in_effect_should_preserve_canonical_attribute(
+    ) -> Result<()> {
         let raw_html = "<div class=\"text\"><h3>Effect</h3>[On Play] You may rest your <slash> attribute Leader or 1 of your DON!! cards: Draw 2 cards and trash 1 card from your hand.</slash></div>";
         let expected = "[On Play] You may rest your <Slash> attribute Leader or 1 of your DON!! cards: Draw 2 cards and trash 1 card from your hand.";
         let actual = CardScraper::strip_html_tags(raw_html)?;
