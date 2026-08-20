@@ -15,35 +15,10 @@ pub enum CardColor {
 
 impl CardColor {
     pub fn parse(localizer: &Localizer, value: &str) -> Result<CardColor> {
-        let value = value.trim();
-
-        for candidate in Self::parse_candidates(value) {
-            if let Some(key) = localizer.match_color(candidate) {
-                return Self::from_str(&key);
-            }
-
-            if let Some((key, _)) = localizer
-                .colors
-                .iter()
-                .find(|(_, color)| color.eq_ignore_ascii_case(candidate))
-            {
-                return Self::from_str(key);
-            }
+        match localizer.match_color(value.trim()) {
+            Some(key) => Self::from_str(&key),
+            None => bail!("Failed to match color `{}`", value),
         }
-
-        bail!("Failed to match color `{}`", value)
-    }
-
-    fn parse_candidates(value: &str) -> Vec<&str> {
-        let mut candidates = vec![value];
-
-        if let Some((prefix, rest)) = value.split_once(' ') {
-            if prefix.eq_ignore_ascii_case("color") {
-                candidates.push(rest.trim());
-            }
-        }
-
-        candidates
     }
 
     pub fn from_str(value: &str) -> Result<CardColor> {
@@ -96,35 +71,5 @@ mod tests {
     #[test]
     fn from_str_invalid_returns_err() {
         assert!(CardColor::from_str("not a valid color").is_err());
-    }
-
-    #[test]
-    fn parse_accepts_color_prefix_without_aliases() {
-        let localizer = Localizer {
-            hostname: String::new(),
-            colors: [
-                (String::from("red"), String::from("Red")),
-                (String::from("green"), String::from("Green")),
-                (String::from("blue"), String::from("Blue")),
-                (String::from("purple"), String::from("Purple")),
-                (String::from("black"), String::from("Black")),
-                (String::from("yellow"), String::from("Yellow")),
-            ]
-            .into_iter()
-            .collect(),
-            attributes: Default::default(),
-            categories: Default::default(),
-            rarities: Default::default(),
-            aliases: Default::default(),
-        };
-
-        assert_eq!(
-            CardColor::parse(&localizer, "Color Purple").unwrap(),
-            CardColor::Purple
-        );
-        assert_eq!(
-            CardColor::parse(&localizer, "color green").unwrap(),
-            CardColor::Green
-        );
     }
 }
