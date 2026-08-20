@@ -14,6 +14,19 @@ pub enum CardAttribute {
 }
 
 impl CardAttribute {
+    pub fn all() -> &'static [CardAttribute] {
+        static ATTRIBUTES: [CardAttribute; 6] = [
+            CardAttribute::Slash,
+            CardAttribute::Strike,
+            CardAttribute::Ranged,
+            CardAttribute::Special,
+            CardAttribute::Wisdom,
+            CardAttribute::Unknown,
+        ];
+
+        &ATTRIBUTES
+    }
+
     pub fn parse(localizer: &Localizer, value: &str) -> Result<CardAttribute> {
         match localizer.match_attribute(value.trim()) {
             Some(key) => Ok(Self::from_str(&key)?),
@@ -30,6 +43,28 @@ impl CardAttribute {
             "wisdom" => Ok(Self::Wisdom),
             "unknown" => Ok(Self::Unknown),
             _ => bail!("Unsupported attribute `{}`", value),
+        }
+    }
+
+    pub fn html_tag_name(&self) -> &'static str {
+        match self {
+            Self::Slash => "slash",
+            Self::Strike => "strike",
+            Self::Ranged => "ranged",
+            Self::Special => "special",
+            Self::Wisdom => "wisdom",
+            Self::Unknown => "unknown",
+        }
+    }
+
+    pub fn effect_text(&self) -> &'static str {
+        match self {
+            Self::Slash => "<Slash>",
+            Self::Strike => "<Strike>",
+            Self::Ranged => "<Ranged>",
+            Self::Special => "<Special>",
+            Self::Wisdom => "<Wisdom>",
+            Self::Unknown => "<Unknown>",
         }
     }
 

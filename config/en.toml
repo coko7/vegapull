@@ -33,3 +33,13 @@ leader = "L"
 special = "SP CARD"
 treasure_rare = "TR"
 promo = "P"
+
+[aliases]
+
+[aliases.colors]
+red = ["Color Red"]
+green = ["Color Green"]
+blue = ["Color Blue"]
+purple = ["Color Purple"]
+black = ["Color Black"]
+yellow = ["Color Yellow"]

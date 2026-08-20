@@ -158,4 +158,40 @@ mod tests {
 
         assert_eq!(actual, expected);
     }
+
+    #[test]
+    fn english_color_aliases_cover_every_color() {
+        let localizer: Localizer = toml::from_str(EN_LOCALE_RAW).unwrap();
+
+        let cases = [
+            ("Color Red", "red"),
+            ("Color Green", "green"),
+            ("Color Blue", "blue"),
+            ("Color Purple", "purple"),
+            ("Color Black", "black"),
+            ("Color Yellow", "yellow"),
+        ];
+
+        for (input, expected) in cases {
+            assert_eq!(localizer.match_color(input).as_deref(), Some(expected));
+        }
+    }
+
+    #[test]
+    fn english_asia_color_aliases_cover_every_color() {
+        let localizer: Localizer = toml::from_str(EN_ASIA_LOCALE_RAW).unwrap();
+
+        let cases = [
+            ("Color Red", "red"),
+            ("Color Green", "green"),
+            ("Color Blue", "blue"),
+            ("Color Purple", "purple"),
+            ("Color Black", "black"),
+            ("Color Yellow", "yellow"),
+        ];
+
+        for (input, expected) in cases {
+            assert_eq!(localizer.match_color(input).as_deref(), Some(expected));
+        }
+    }
 }

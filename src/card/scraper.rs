@@ -1,5 +1,5 @@
 use anyhow::{bail, Context, Result};
-use log::{error, trace};
+use log::trace;
 use once_cell::sync::Lazy;
 use regex::Regex;
 use scraper::{ElementRef, Html};
@@ -16,7 +16,9 @@ fn normalize_ascii(s: &str) -> String {
 }
 
 static FIRST_H3: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"(?is)^\s*<h3\b[^>]*>.*?</h3>\s*").unwrap());
+    Lazy::new(|| Regex::new(r"(?is)<h3\b[^>]*>\s*Effect\s*</h3>\s*").unwrap());
+static ATTRIBUTE_HTML_TAG: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"(?i)</?\s*([a-z]+)\b[^>]*?/?>").unwrap());
 
 pub struct CardScraper {}
 
@@ -399,11 +401,48 @@ impl CardScraper {
 
     fn strip_html_tags(value: &str) -> Result<String> {
         let html = FIRST_H3.replace(value, "");
+        let html = Self::replace_attribute_tags(&html);
         let document = Html::parse_fragment(&html);
 
         let text = document.root_element().text().collect::<Vec<_>>().join(" ");
         let text = text.split_whitespace().collect::<Vec<_>>().join(" ");
-        Ok(text)
+        Ok(Self::restore_attribute_placeholders(&text))
+    }
+
+    fn replace_attribute_tags(value: &str) -> String {
+        ATTRIBUTE_HTML_TAG
+            .replace_all(value, |caps: &regex::Captures<'_>| {
+                let full_match = &caps[0];
+                let Some(tag_name) = caps.get(1).map(|m| m.as_str()) else {
+                    return full_match.to_string();
+                };
+
+                CardAttribute::all()
+                    .iter()
+                    .find(|attribute| attribute.html_tag_name().eq_ignore_ascii_case(tag_name))
+                    .map(|attribute| {
+                        if full_match.trim_start().starts_with("</") {
+                            " ".to_string()
+                        } else {
+                            format!(" {} ", Self::attribute_placeholder(attribute))
+                        }
+                    })
+                    .unwrap_or_else(|| full_match.to_string())
+            })
+            .into_owned()
+    }
+
+    fn attribute_placeholder(attribute: &CardAttribute) -> String {
+        format!("__VEGAPULL_ATTRIBUTE_{}__", attribute.html_tag_name().to_uppercase())
+    }
+
+    fn restore_attribute_placeholders(value: &str) -> String {
+        CardAttribute::all().iter().fold(value.to_string(), |text, attribute| {
+            text.replace(
+                &Self::attribute_placeholder(attribute),
+                attribute.effect_text(),
+            )
+        })
     }
 
     fn get_child_node(element: ElementRef, selector: String) -> Result<ElementRef> {
@@ -433,7 +472,7 @@ mod tests {
     fn strip_html_tags_with_html_should_keep_content() -> Result<()> {
         let raw_html = "<h3>Effect</h3>If your Leader has the <slash> attribute, this Character gains [Rush: Character].<br>(This card can attack Characters on the turn in which it is played.)<br>[On Play] Rest up to 2 of your opponent's Characters with a cost of 2 or less.</slash>";
 
-        let expected = "If your Leader has the attribute, this Character gains [Rush: Character]. (This card can attack Characters on the turn in which it is played.) [On Play] Rest up to 2 of your opponent's Characters with a cost of 2 or less.";
+        let expected = "If your Leader has the <Slash> attribute, this Character gains [Rush: Character]. (This card can attack Characters on the turn in which it is played.) [On Play] Rest up to 2 of your opponent's Characters with a cost of 2 or less.";
         let actual = CardScraper::strip_html_tags(raw_html)?;
 
         assert_eq!(expected, actual);
@@ -468,7 +507,7 @@ mod tests {
     #[test]
     fn strip_html_tags_with_self_closing_attribute_tag_should_keep_content() -> Result<()> {
         let raw_html = "If your Leader has the <slash/> attribute, gains [Rush].";
-        let expected = "If your Leader has the attribute, gains [Rush].";
+        let expected = "If your Leader has the <Slash> attribute, gains [Rush].";
         let actual = CardScraper::strip_html_tags(raw_html)?;
         assert_eq!(expected, actual);
         Ok(())
@@ -487,7 +526,7 @@ mod tests {
     fn strip_html_tags_with_overlapping_tags_should_keep_all_text() -> Result<()> {
         let raw_html =
             "If your Leader has the <slash>attribute<strike>and more</slash>tail</strike>.";
-        let expected = "If your Leader has the attribute and more tail .";
+        let expected = "If your Leader has the <Slash> attribute <Strike> and more tail .";
         let actual = CardScraper::strip_html_tags(raw_html)?;
         assert_eq!(expected, actual);
         Ok(())
@@ -496,7 +535,17 @@ mod tests {
     #[test]
     fn strip_html_tags_with_nested_same_attribute_tag_should_keep_all_text() -> Result<()> {
         let raw_html = "If your Leader has the <slash>inner <slash>double</slash> nested</slash>.";
-        let expected = "If your Leader has the inner double nested .";
+        let expected = "If your Leader has the <Slash> inner <Slash> double nested .";
+        let actual = CardScraper::strip_html_tags(raw_html)?;
+        assert_eq!(expected, actual);
+        Ok(())
+    }
+
+    #[test]
+    fn strip_html_tags_with_attribute_tag_in_effect_should_preserve_canonical_attribute() -> Result<()>
+    {
+        let raw_html = "<div class=\"text\"><h3>Effect</h3>[On Play] You may rest your <slash> attribute Leader or 1 of your DON!! cards: Draw 2 cards and trash 1 card from your hand.</slash></div>";
+        let expected = "[On Play] You may rest your <Slash> attribute Leader or 1 of your DON!! cards: Draw 2 cards and trash 1 card from your hand.";
         let actual = CardScraper::strip_html_tags(raw_html)?;
         assert_eq!(expected, actual);
         Ok(())
