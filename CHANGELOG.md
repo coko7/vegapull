@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0](https://github.com/coko7/vegapull/compare/v1.2.3...v1.3.0) - 2026-08-21
+
+### Added
+
+- add color aliases and enhance attribute handling in localizer. ([#21](https://github.com/coko7/vegapull/pull/21))
+
+### Other
+
+- *(deps)* bump openssl from 0.10.79 to 0.10.81 ([#23](https://github.com/coko7/vegapull/pull/23))
+- *(deps)* bump crossbeam-epoch and h2
+
 ## [1.2.3](https://github.com/coko7/vegapull/compare/v1.2.2...v1.2.3) - 2026-07-22
 
 ### Fixed
