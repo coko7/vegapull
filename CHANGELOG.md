@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.1](https://github.com/coko7/vegapull/compare/v1.3.0...v1.3.1) - 2026-10-09
+
+### Fixed
+
+- update scraper for the new JP website redesign + h3 tag update ([#24](https://github.com/coko7/vegapull/pull/24))
+
 ## [1.3.0](https://github.com/coko7/vegapull/compare/v1.2.3...v1.3.0) - 2026-08-21
 
 ### Added
