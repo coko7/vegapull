@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.2](https://github.com/coko7/vegapull/compare/v1.3.1...v1.3.2) - 2026-10-09
+
+### Fixed
+
+- decode HTML entities in card names and pack titles ([#29](https://github.com/coko7/vegapull/pull/29))
+
+### Other
+
+- add vegapull logo and center header ([#27](https://github.com/coko7/vegapull/pull/27))
+
 ## [1.3.1](https://github.com/coko7/vegapull/compare/v1.3.0...v1.3.1) - 2026-10-09
 
 ### Fixed
