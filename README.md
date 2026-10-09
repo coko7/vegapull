@@ -1,19 +1,25 @@
+<div align="center">
+
 # 👒 vega (pull)
 
 A CLI utility to retrieve data for the One Piece Trading Cards Game (TCG).
 
-It goes directly goes against the [onepiece-cardgame.com](https://en.onepiece-cardgame.com) website and attempts to scrap information such as packs, cards and images.
+<img alt="vegapull logo" src="assets/vegapull_logo.png" />
+
+**Vega(pull)** goes directly against the [onepiece-cardgame.com](https://en.onepiece-cardgame.com) website and attempts to scrap information such as packs, cards and images.
 
 [![Crates info](https://img.shields.io/crates/v/vegapull.svg)](https://crates.io/crates/vegapull)
 [![License: GPL-3.0](https://img.shields.io/github/license/coko7/vegapull?color=blue)](LICENSE)
 [![Number of Stars](https://img.shields.io/github/stars/coko7/vegapull.svg?style=flat&logo=github&colorB=green&label=stars)](https://github.com/coko7/vegapull/stargazers)
 ![Rust](https://img.shields.io/github/languages/top/coko7/vegapull?color=orange)
 [![Tests](https://github.com/coko7/vegapull/actions/workflows/rust.yml/badge.svg)](https://github.com/coko7/vegapull/actions/workflows/rust.yml)
+</div>
 
 > [!IMPORTANT]
 > ✨ [v1.0.0](https://crates.io/crates/vegapull/1.0.0) is out now! The entire tool has been reworked to be user-friendly and ***blazingly fast 🚀***
 >
 > Changes:
+>
 > * Rename from ~~vegapull~~ to **vega** as it fits better when combining with subcommands
 > * Rename subcommands and reorder them
 > * Build support for parallel downloads for JSON and images directly into the tool
@@ -27,17 +33,20 @@ It goes directly goes against the [onepiece-cardgame.com](https://en.onepiece-ca
 
 > [!WARNING]
 > Copyright disclaimer:
+>
 > * **Data** downloaded using this tool is copyrighted by ©Eiichiro Oda/Shueisha, Toei Animation, Bandai Namco Entertainment Inc.
 > * **Source code** for this tool is available under the GNU General Public License 3.0 or later. See [LICENSE](LICENSE) for more details.
 
 ## Installation
 
 The easiest way to install is through [crates.io](https://crates.io/crates/vegapull):
+
 ```sh
 cargo install vegapull
 ```
 
 The other option is to build from source:
+
 ```sh
 git clone https://github.com/coko7/vegapull.git
 cd vegapull
@@ -47,14 +56,16 @@ cargo build --release
 ## How to use?
 
 To download all data from One Piece TCG, it's recommended to use the interactive mode:
+
 ```console
-$ vega pull all
+vega pull all
 ```
 
 You can restrict the download further by using the other subcommands:
-- `vega pull packs`: downloads the list of packs and stops
-- `vega pull cards 569301`: download all cards in pack 569301 (JSON only)
-- `vega pull cards 569302 --with-images`: download all cards in pack 569302 along with all images
+
+* `vega pull packs`: downloads the list of packs and stops
+* `vega pull cards 569301`: download all cards in pack 569301 (JSON only)
+* `vega pull cards 569302 --with-images`: download all cards in pack 569302 along with all images
 
 See more commands with `vega help`
 
@@ -93,7 +104,7 @@ $ go run scripts/pull.go
 
 ### Python
 
-You can find a Python helper script on this repository: https://github.com/buhbbl/punk-records
+You can find a Python helper script on this repository: <https://github.com/buhbbl/punk-records>
 
 ## Where can I find prefetched datasets?
 
@@ -101,5 +112,6 @@ You can find a Python helper script on this repository: https://github.com/buhbb
 > Keep in mind that data downloaded by **vega** is copyrighted data (see copyright notice at the top of this file).
 
 There are currently two Git repositories with JSON data:
-- [buhbbl/punk-records](https://github.com/buhbbl/punk-records) (all languages)
-- [coko7/vegapull-records](https://github.com/coko7/vegapull-records) (English/Japanese only)
+
+* [buhbbl/punk-records](https://github.com/buhbbl/punk-records) (all languages)
+* [coko7/vegapull-records](https://github.com/coko7/vegapull-records) (English/Japanese only)
