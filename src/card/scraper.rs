@@ -89,7 +89,10 @@ impl CardScraper {
         let sel = "dt>div.cardName";
         trace!("fetching card.name ({})...", sel);
 
-        let name = Self::get_child_node(element, sel.to_string())?.inner_html();
+        let name = Self::get_child_node(element, sel.to_string())?
+            .text()
+            .collect::<String>();
+        let name = name.trim().to_string();
 
         trace!("fetched card.name: {}", name);
         Ok(name)
@@ -471,6 +474,17 @@ impl CardScraper {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn fetch_name_decodes_html_entities() -> Result<()> {
+        let html = Html::parse_fragment(
+            r#"<dl id="OP01-001"><dt><div class="cardName">Shachi &amp; Penguin</div></dt></dl>"#,
+        );
+        let dl = CardScraper::get_dl_node(&html, "OP01-001".to_string())?;
+
+        assert_eq!("Shachi & Penguin", CardScraper::fetch_name(dl)?);
+        Ok(())
+    }
 
     #[test]
     fn strip_html_tags_with_html_should_keep_content() -> Result<()> {

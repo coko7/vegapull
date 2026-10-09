@@ -39,7 +39,7 @@ pub struct TitleParts {
 
 impl Pack {
     pub fn new(element: ElementRef) -> Result<Self> {
-        let raw_title = Self::flatten_title(&element.inner_html())?;
+        let raw_title = Self::flatten_title(&element.text().collect::<String>())?;
         let title_parts = Self::process_title_parts(&raw_title)?;
 
         Ok(Self {
@@ -114,9 +114,10 @@ impl Pack {
         Ok(None)
     }
 
-    fn flatten_title(inner_html: &str) -> Result<String> {
-        let reg = Regex::new(r"&lt;.*&gt;")?;
-        let result = reg.replace_all(inner_html, "").to_string();
+    // option text is already entity-decoded, but Bandai embeds escaped tags (e.g. <br>) in it
+    fn flatten_title(text: &str) -> Result<String> {
+        let reg = Regex::new(r"<[^>]*>")?;
+        let result = reg.replace_all(text, "").to_string();
         Ok(result)
     }
 }
@@ -222,11 +223,25 @@ mod tests {
 
     #[test]
     fn flatten_title_removes_html_tags() {
-        let original = "TITLE&lt;br class=\"test\"&gt; - gum is yummy - [1]";
+        let original = "TITLE<br class=\"test\"> - gum is yummy - [1]";
         let flattened = "TITLE - gum is yummy - [1]";
 
         let result = Pack::flatten_title(original);
         assert_eq!(result.unwrap(), flattened);
+    }
+
+    #[test]
+    fn new_decodes_html_entities_and_strips_escaped_tags() {
+        let html = scraper::Html::parse_fragment(
+            r#"<select><option value="569112">BOOSTER PACK -Ace &amp; Newgate-&lt;br class="sp"&gt; [OP-13]</option></select>"#,
+        );
+        let sel = scraper::Selector::parse("option").unwrap();
+        let element = html.select(&sel).next().unwrap();
+
+        let pack = Pack::new(element).unwrap();
+        assert_eq!(pack.title_parts.title, "Ace & Newgate");
+        assert!(!pack.raw_title.contains("&amp;"));
+        assert!(!pack.raw_title.contains('<'));
     }
 
     #[test]
