@@ -69,7 +69,7 @@ impl OpTcgScraper {
 
         let document = scraper::Html::parse_document(&response);
 
-        let sel = "div.seriesCol>select#series>option";
+        let sel = "select#series>option";
         debug!("fetching series (packs) ({})...", sel);
 
         let series_selector = scraper::Selector::parse(sel).unwrap();

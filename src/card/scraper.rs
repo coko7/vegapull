@@ -15,8 +15,7 @@ fn normalize_ascii(s: &str) -> String {
     s.nfkc().collect::<String>()
 }
 
-static FIRST_H3: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"(?is)<h3\b[^>]*>\s*Effect\s*</h3>\s*").unwrap());
+static FIRST_H3: Lazy<Regex> = Lazy::new(|| Regex::new(r"(?is)<h3\b[^>]*>.*?</h3>\s*").unwrap());
 static ATTRIBUTE_HTML_TAG: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"(?i)</?\s*([a-z]+)\b[^>]*?/?>").unwrap());
 
@@ -137,7 +136,7 @@ impl CardScraper {
     }
 
     pub fn fetch_colors(localizer: &Localizer, element: ElementRef) -> Result<Vec<CardColor>> {
-        let sel = "dd>div.backCol div.color";
+        let sel = "dd div.backCol div.color";
         trace!("fetching card.colors ({})...", sel);
 
         let raw_colors = Self::get_child_node(element, sel.to_string())?.inner_html();
@@ -178,7 +177,7 @@ impl CardScraper {
     }
 
     pub fn fetch_cost(element: ElementRef) -> Result<Option<i32>> {
-        let sel = "dd>div.backCol>div.col2>div.cost";
+        let sel = "dd div.backCol>div.col2>div.cost";
         trace!("fetching card.cost ({})...", sel);
 
         let raw_cost = Self::get_child_node(element, sel.to_string())?.inner_html();
@@ -214,7 +213,7 @@ impl CardScraper {
         localizer: &Localizer,
         element: ElementRef,
     ) -> Result<Vec<CardAttribute>> {
-        let sel = "dd>div.backCol>div.col2>div.attribute>img";
+        let sel = "dd div.backCol>div.col2>div.attribute>img";
         trace!("fetching card.attributes ({})...", sel);
 
         if let Ok(attr_img) = Self::get_child_node(element, sel.to_string()) {
@@ -253,7 +252,7 @@ impl CardScraper {
     }
 
     pub fn fetch_power(element: ElementRef) -> Result<Option<i32>> {
-        let sel = "dd>div.backCol>div.col2>div.power";
+        let sel = "dd div.backCol>div.col2>div.power";
         trace!("fetching card.power ({})...", sel);
 
         let raw_power = Self::get_child_node(element, sel.to_string())?.inner_html();
@@ -286,7 +285,7 @@ impl CardScraper {
     }
 
     pub fn fetch_counter(element: ElementRef) -> Result<Option<i32>> {
-        let sel = "dd>div.backCol>div.col2>div.counter";
+        let sel = "dd div.backCol>div.col2>div.counter";
         trace!("fetching card.counter ({})...", sel);
 
         let raw_counter = Self::get_child_node(element, sel.to_string())?.inner_html();
@@ -323,7 +322,7 @@ impl CardScraper {
     }
 
     pub fn fetch_block_number(element: ElementRef) -> Result<Option<i32>> {
-        let sel = "dd>div.backCol>div.col2>div.block";
+        let sel = "dd div.backCol>div.col2>div.block";
         trace!("fetching card.block_number ({})...", sel);
 
         let raw_block_number = Self::get_child_node(element, sel.to_string())?.inner_html();
@@ -359,7 +358,7 @@ impl CardScraper {
     }
 
     pub fn fetch_types(element: ElementRef) -> Result<Vec<String>> {
-        let sel = "dd>div.backCol>div.feature";
+        let sel = "dd div.backCol>div.feature";
         trace!("fetching card.types ({})...", sel);
 
         let types = Self::get_child_node(element, sel.to_string())?.inner_html();
@@ -373,7 +372,7 @@ impl CardScraper {
     }
 
     pub fn fetch_effect(element: ElementRef) -> Result<String> {
-        let sel = "dd>div.backCol>div.text";
+        let sel = "dd div.backCol>div.text";
         trace!("fetching card.effect ({})...", sel);
 
         let effect = Self::get_child_node(element, sel.to_string())?.inner_html();
@@ -384,7 +383,7 @@ impl CardScraper {
     }
 
     pub fn fetch_trigger(element: ElementRef) -> Result<Option<String>> {
-        let sel = "dd>div.backCol>div.trigger";
+        let sel = "dd div.backCol>div.trigger";
         trace!("fetching card.trigger ({})...", sel);
 
         if let Ok(trigger_div) = Self::get_child_node(element, sel.to_string()) {
