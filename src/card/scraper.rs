@@ -216,7 +216,7 @@ impl CardScraper {
         localizer: &Localizer,
         element: ElementRef,
     ) -> Result<Vec<CardAttribute>> {
-        let sel = "dd div.backCol>div.col2>div.attribute>img";
+        let sel = "dd div.backCol>div.col2>div.attribute img";
         trace!("fetching card.attributes ({})...", sel);
 
         if let Ok(attr_img) = Self::get_child_node(element, sel.to_string()) {
